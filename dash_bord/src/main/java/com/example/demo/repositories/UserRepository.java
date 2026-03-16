@@ -10,6 +10,20 @@ import java.util.List;
 import java.util.Optional;
 
 public interface UserRepository extends JpaRepository<User, Long> {
+
+    // Получить всех активных пользователей — участников указанных проектов (через
+    // ProjectMember).
+    // PM должен видеть всех участников своих проектов, даже если у них ещё нет
+    // задач.
+    @Query("""
+            SELECT DISTINCT pm.user
+            FROM ProjectMember pm
+            LEFT JOIN FETCH pm.user.department
+            WHERE pm.project.id IN :projectIds
+              AND pm.user.isActive = true
+            """)
+    List<User> findActiveUsersByProjectIds(@Param("projectIds") List<Long> projectIds);
+
     Optional<User> findByEmail(String email);
 
     boolean existsByEmail(String email);

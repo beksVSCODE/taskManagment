@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Task, User, TaskStatus, Project } from '@/types';
-import { useUpdateTask, useDeleteTask, useAddComment, useUsers, useAddSubtask, useUpdateSubtask, useDeleteSubtask } from '@/hooks/useData';
+import { useUpdateTask, useDeleteTask, useAddComment, useUsers, useAddSubtask, useUpdateSubtask, useDeleteSubtask, useComments } from '@/hooks/useData';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useAuth } from '@/contexts/AuthContext';
 import { format, formatDistanceToNow } from 'date-fns';
@@ -24,8 +24,8 @@ interface Props {
 }
 
 const statusLabels: Record<TaskStatus, string> = { NEW: 'Новые', IN_PROGRESS: 'В работе', ON_REVIEW: 'На проверке', DONE: 'Завершено' };
-const priorityLabels: Record<string, string> = { LOW: 'Низкий', MEDIUM: 'Средний', HIGH: 'Высокий' };
-const priorityStyles: Record<string, string> = { LOW: 'text-priority-low', MEDIUM: 'text-priority-medium', HIGH: 'text-priority-high' };
+const priorityLabels: Record<string, string> = { LOW: 'Низкий', MEDIUM: 'Средний', HIGH: 'Высокий', URGENT: 'Срочный' };
+const priorityStyles: Record<string, string> = { LOW: 'text-priority-low', MEDIUM: 'text-priority-medium', HIGH: 'text-priority-high', URGENT: 'text-destructive font-medium' };
 
 export function TaskDetailPanel({ task, project, open, onClose }: Props) {
   const [commentText, setCommentText] = useState('');
@@ -39,6 +39,8 @@ export function TaskDetailPanel({ task, project, open, onClose }: Props) {
 
   const { currentUser } = useAuth();
   const { data: users = [] } = useUsers();
+  // task может быть null — передаём пустую строку; useComments отключён при enabled:!!taskId
+  const { data: comments = [], isLoading: commentsLoading } = useComments(task?.id ?? '');
   const updateTask = useUpdateTask();
   const deleteTask = useDeleteTask();
   const addComment = useAddComment();
@@ -370,7 +372,7 @@ export function TaskDetailPanel({ task, project, open, onClose }: Props) {
             <div>
               <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
                 <MessageSquare className="w-4 h-4" />
-                Комментарии ({task.comments.length})
+                Комментарии ({commentsLoading ? '…' : comments.length})
               </h4>
 
               <div className="relative mb-4">
@@ -406,16 +408,25 @@ export function TaskDetailPanel({ task, project, open, onClose }: Props) {
               </div>
 
               <div className="space-y-3">
-                {[...task.comments].reverse().map(comment => {
-                  const author = users.find(u => u.id === comment.authorId);
+                {commentsLoading && (
+                  <p className="text-xs text-muted-foreground">Загрузка комментариев…</p>
+                )}
+                {!commentsLoading && comments.length === 0 && (
+                  <p className="text-sm text-muted-foreground">Нет комментариев</p>
+                )}
+                {[...comments].reverse().map(comment => {
+                  // authorName приходит напрямую из CommentResponse, users-список как запасной вариант
+                  const authorName = comment.authorName
+                    || users.find(u => u.id === comment.authorId)?.name
+                    || 'Неизвестный';
                   return (
                     <div key={comment.id} className="flex gap-3">
                       <div className="w-7 h-7 rounded-full bg-primary/10 flex-shrink-0 flex items-center justify-center text-[9px] font-medium text-primary">
-                        {author?.name.split(' ').map(n => n[0]).join('')}
+                        {authorName.split(' ').map((n: string) => n[0]).join('')}
                       </div>
                       <div className="flex-1">
                         <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium">{author?.name}</span>
+                          <span className="text-sm font-medium">{authorName}</span>
                           <span className="text-xs text-muted-foreground">
                             {formatDistanceToNow(new Date(comment.createdAt), { addSuffix: true, locale: ru })}
                           </span>

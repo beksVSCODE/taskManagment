@@ -156,10 +156,13 @@ export const taskService = {
 
     // ── Комментарии ───────────────────────────────────────────────────────────
 
-    addComment: async (taskId: string, _authorId: string, text: string): Promise<Task> => {
+    // Получить комментарии задачи напрямую (без full getById)
+    getComments: async (taskId: string): Promise<Comment[]> => {
+        const data = await api.get<Record<string, unknown>[]>(`/tasks/${taskId}/comments`);
+        return data.map(mapComment);
+    },
+
+    addComment: async (taskId: string, _authorId: string, text: string): Promise<void> => {
         await api.post(`/tasks/${taskId}/comments`, { content: text });
-        const task = await taskService.getById(taskId);
-        if (!task) throw new Error('Task not found');
-        return task;
     },
 };

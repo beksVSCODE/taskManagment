@@ -29,6 +29,7 @@ public class EmployeeWorkloadDetailsDTO {
         private long activeTasks;
         private long completedTasks;
         private long overdueTasks;
+        private double workloadPercent;
         private String workloadStatus;
     }
 

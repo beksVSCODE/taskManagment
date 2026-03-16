@@ -25,14 +25,14 @@ public class EmployeeWorkloadController {
     private final EmployeeWorkloadService employeeWorkloadService;
 
     @GetMapping("/workload")
-    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','LEADER','PM')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','PM')")
     public ResponseEntity<List<EmployeeWorkloadDTO>> getEmployeesWorkload(
             @AuthenticationPrincipal UserDetails userDetails) {
         return ResponseEntity.ok(employeeWorkloadService.getEmployeesWorkload(userDetails.getUsername()));
     }
 
     @GetMapping("/{id}/workload")
-    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','LEADER','PM')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','PM')")
     public ResponseEntity<EmployeeWorkloadDetailsDTO> getEmployeeWorkloadDetails(
             @PathVariable Long id,
             @AuthenticationPrincipal UserDetails userDetails) {

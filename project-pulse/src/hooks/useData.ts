@@ -5,7 +5,6 @@ import { userService } from '@/services/userService';
 import { notificationService } from '@/services/notificationService';
 import { departmentService } from '@/services/departmentService';
 import { employeeWorkloadService } from '@/services/employeeWorkloadService';
-import { useAuth } from '@/contexts/AuthContext';
 import { Task, Role, Subtask, Project } from '@/types';
 
 export function useProjects() {
@@ -117,15 +116,24 @@ export function useDeleteTask() {
     });
 }
 
+// Загрузка комментариев задачи через отдельный ендпоинт
+// Решает проблему с comments:[] хардкодом в mapTask
+export function useComments(taskId: string) {
+    return useQuery({
+        queryKey: ['comments', taskId],
+        queryFn: () => taskService.getComments(taskId),
+        enabled: !!taskId,
+    });
+}
+
 export function useAddComment() {
     const qc = useQueryClient();
-    const { currentUser } = useAuth();
     return useMutation({
         mutationFn: ({ taskId, authorId, text }: { taskId: string; authorId: string; text: string }) =>
             taskService.addComment(taskId, authorId, text),
-        onSuccess: (task) => {
-            qc.invalidateQueries({ queryKey: ['tasks', task.projectId] });
-            qc.invalidateQueries({ queryKey: ['tasks', 'all'] });
+        // variables содержит taskId — инвалидируем только комментарии этой задачи
+        onSuccess: (_, variables) => {
+            qc.invalidateQueries({ queryKey: ['comments', variables.taskId] });
             qc.invalidateQueries({ queryKey: ['notifications'] });
         },
     });

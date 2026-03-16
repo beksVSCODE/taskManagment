@@ -27,6 +27,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -35,13 +36,19 @@ import java.util.stream.Collectors;
 @Transactional(readOnly = true)
 public class EmployeeWorkloadService {
 
+    /**
+     * Базовая емкость сотрудника (очки в единицах веса задач).
+     * LOW=1, MEDIUM=2, HIGH=3, URGENT=5 — итого 10 очков = 100% загрузка.
+     */
+    private static final int DEFAULT_CAPACITY_POINTS = 10;
+
     private final UserRepository userRepository;
     private final TaskAssigneeRepository taskAssigneeRepository;
     private final DepartmentRepository departmentRepository;
 
     public List<EmployeeWorkloadDTO> getEmployeesWorkload(String requesterEmail) {
         User requester = getUserByEmail(requesterEmail);
-        List<User> visibleEmployees = resolveVisibleEmployees(requester);
+        List<User> visibleEmployees = resolveVisibleEmployeesFixedForPM(requester);
 
         if (visibleEmployees.isEmpty()) {
             return List.of();
@@ -58,7 +65,14 @@ public class EmployeeWorkloadService {
         return visibleEmployees.stream()
                 .map(user -> {
                     List<TaskAssignee> userAssignments = assignmentsByUserId.getOrDefault(user.getId(), List.of());
-                    Stats stats = computeStats(userAssignments);
+                    // Дедупликация задач по taskId для корректной статистики
+                    List<TaskAssignee> dedupedAssignments = userAssignments.stream()
+                            .collect(Collectors.toMap(
+                                    a -> a.getTask().getId(),
+                                    a -> a,
+                                    (a1, a2) -> a1))
+                            .values().stream().toList();
+                    Stats stats = computeStats(dedupedAssignments);
 
                     EmployeeWorkloadDTO dto = new EmployeeWorkloadDTO();
                     dto.setId(user.getId());
@@ -69,11 +83,30 @@ public class EmployeeWorkloadService {
                     dto.setActiveTasks(stats.activeTasks());
                     dto.setCompletedTasks(stats.completedTasks());
                     dto.setOverdueTasks(stats.overdueTasks());
-                    dto.setWorkloadStatus(resolveWorkloadStatus(stats.activeTasks()));
+                    dto.setWorkloadPercent(stats.workloadPercent());
+                    dto.setWorkloadStatus(resolveWorkloadStatus(stats.workloadPercent()));
                     return dto;
                 })
                 .sorted(Comparator.comparing(EmployeeWorkloadDTO::getName, String.CASE_INSENSITIVE_ORDER))
                 .toList();
+    }
+
+    // Исправленная логика для PM: возвращает всех участников проектов PM, даже если
+    // у них нет задач
+    private List<User> resolveVisibleEmployeesFixedForPM(User requester) {
+        if (requester.getRole() == Role.ADMIN || requester.getRole() == Role.MANAGER) {
+            return userRepository.findAllActiveWithDepartment();
+        }
+        if (requester.getRole() == Role.PM) {
+            // Получаем id проектов, где PM — requester
+            List<Long> projectIds = departmentRepository.findProjectIdsByPmId(requester.getId());
+            if (projectIds.isEmpty())
+                return List.of();
+            // Получаем всех пользователей, которые участвуют в этих проектах
+            return userRepository.findActiveUsersByProjectIds(projectIds);
+        }
+        // TEAM видит только себя
+        return List.of(requester);
     }
 
     public EmployeeWorkloadDetailsDTO getEmployeeWorkloadDetails(Long employeeId, String requesterEmail) {
@@ -91,7 +124,14 @@ public class EmployeeWorkloadService {
             throw new AccessDeniedException("Нет доступа к загруженности этого сотрудника");
         }
 
-        List<TaskAssignee> assignments = taskAssigneeRepository.findByUserIdWithTaskAndProject(employee.getId());
+        List<TaskAssignee> rawAssignments = taskAssigneeRepository.findByUserIdWithTaskAndProject(employee.getId());
+        // Дедупликация: одна задача считается ровно один раз
+        List<TaskAssignee> assignments = rawAssignments.stream()
+                .collect(Collectors.toMap(
+                        a -> a.getTask().getId(),
+                        a -> a,
+                        (a1, a2) -> a1))
+                .values().stream().toList();
         Stats stats = computeStats(assignments);
 
         Map<Long, String> managerDepartments = buildManagerDepartmentMap();
@@ -111,7 +151,8 @@ public class EmployeeWorkloadService {
         statistics.setActiveTasks(stats.activeTasks());
         statistics.setCompletedTasks(stats.completedTasks());
         statistics.setOverdueTasks(stats.overdueTasks());
-        statistics.setWorkloadStatus(resolveWorkloadStatus(stats.activeTasks()));
+        statistics.setWorkloadPercent(stats.workloadPercent());
+        statistics.setWorkloadStatus(resolveWorkloadStatus(stats.workloadPercent()));
         details.setStatistics(statistics);
 
         EmployeeWorkloadDetailsDTO.TaskStatusStats taskStatusStats = new EmployeeWorkloadDetailsDTO.TaskStatusStats();
@@ -205,39 +246,67 @@ public class EmployeeWorkloadService {
     private Stats computeStats(List<TaskAssignee> assignments) {
         LocalDate today = LocalDate.now();
 
-        long completed = assignments.stream()
+        List<Task> tasks = assignments.stream()
                 .map(TaskAssignee::getTask)
-                .filter(t -> t != null && t.getStatus() == TaskStatus.DONE)
+                .filter(Objects::nonNull)
+                .toList();
+
+        long total = tasks.size();
+
+        List<Task> activeTasks = tasks.stream()
+                .filter(t -> t.getStatus() != TaskStatus.DONE)
+                .toList();
+
+        long active = activeTasks.size();
+
+        long completed = tasks.stream()
+                .filter(t -> t.getStatus() == TaskStatus.DONE)
                 .count();
 
-        long active = assignments.stream()
-                .map(TaskAssignee::getTask)
-                .filter(t -> t != null && t.getStatus() != TaskStatus.DONE)
+        long overdue = activeTasks.stream()
+                .filter(t -> t.getDueDate() != null && t.getDueDate().isBefore(today))
                 .count();
 
-        long overdue = assignments.stream()
-                .map(TaskAssignee::getTask)
-                .filter(t -> t != null
-                        && t.getDueDate() != null
-                        && t.getDueDate().isBefore(today)
-                        && t.getStatus() != TaskStatus.DONE)
-                .count();
+        // capacity-based: sum(weight of active tasks) / DEFAULT_CAPACITY_POINTS * 100
+        int activeWeightSum = activeTasks.stream()
+                .mapToInt(this::calculateTaskWeight)
+                .sum();
 
-        long total = assignments.stream()
-                .map(TaskAssignee::getTask)
-                .filter(t -> t != null)
-                .count();
+        double workloadPercent = Math.max(0.0,
+                (activeWeightSum / (double) DEFAULT_CAPACITY_POINTS) * 100.0);
 
-        return new Stats(total, active, completed, overdue);
+        return new Stats(total, active, completed, overdue, workloadPercent);
     }
 
-    private String resolveWorkloadStatus(long activeTasks) {
-        if (activeTasks < 5) {
+    /**
+     * Вес задачи по приоритету:
+     * LOW=1, MEDIUM=2, HIGH=3, URGENT=5
+     */
+    int calculateTaskWeight(Task task) {
+        if (task == null || task.getPriority() == null)
+            return 1;
+        return switch (task.getPriority()) {
+            case LOW -> 1;
+            case MEDIUM -> 2;
+            case HIGH -> 3;
+            case URGENT -> 5;
+        };
+    }
+
+    /**
+     * Статус загруженности по проценту:
+     * 0–49% → GREEN
+     * 50–79% → YELLOW
+     * 80–100% → ORANGE
+     * >100% → RED
+     */
+    String resolveWorkloadStatus(double workloadPercent) {
+        if (workloadPercent < 50)
             return "GREEN";
-        }
-        if (activeTasks <= 10) {
+        if (workloadPercent < 80)
             return "YELLOW";
-        }
+        if (workloadPercent <= 100)
+            return "ORANGE";
         return "RED";
     }
 
@@ -270,6 +339,7 @@ public class EmployeeWorkloadService {
                 .orElseThrow(() -> new ResourceNotFoundException("Пользователь не найден"));
     }
 
-    private record Stats(long totalTasks, long activeTasks, long completedTasks, long overdueTasks) {
+    private record Stats(long totalTasks, long activeTasks, long completedTasks, long overdueTasks,
+            double workloadPercent) {
     }
 }
