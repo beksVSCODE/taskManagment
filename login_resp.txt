@@ -1,0 +1,2 @@
+{"token":"eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhZG1pbkB0ZXN0LmNvbSIsInJvbGUiOiJBRE1JTiIsImlhdCI6MTc3MzEyNTY5MCwiZXhwIjoxNzczMjEyMDkwfQ.yzGz0NfLZ1qbHvaQqMRGEfCgdYTkYvq6-HFQglusWWs","email":"admin@test.com","role":"ADMIN","fullName":"Admin User"}
+HTTP:200

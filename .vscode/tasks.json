@@ -1,0 +1,201 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Run Spring Boot Backend",
+            "type": "shell",
+            "command": "export JAVA_HOME=\"/c/Program Files/Java/jdk-21\" && export PATH=\"$JAVA_HOME/bin:$PATH\" && cd dash_bord && ./mvnw spring-boot:run",
+            "group": "build",
+            "isBackground": true,
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "new"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Run Frontend (Vite)",
+            "type": "shell",
+            "command": "cd project-pulse && npm run dev",
+            "group": "build",
+            "isBackground": true,
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "new"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Run Both (Backend + Frontend)",
+            "dependsOn": [
+                "Run Spring Boot Backend",
+                "Run Frontend (Vite)"
+            ],
+            "group": "build"
+        },
+        {
+            "label": "Start Spring Boot",
+            "type": "shell",
+            "command": "cd dash_bord && set JAVA_HOME=C:\\Program Files\\Java\\jdk-21 && set PATH=%JAVA_HOME%\\bin;%PATH% && mvnw.cmd spring-boot:run",
+            "isBackground": true,
+            "problemMatcher": [],
+            "group": "build"
+        },
+        {
+            "label": "Spring Boot Run",
+            "type": "shell",
+            "command": "cd dash_bord && JAVA_HOME='/c/Program Files/Java/jdk-21' PATH=\"$JAVA_HOME/bin:$PATH\" ./mvnw spring-boot:run",
+            "isBackground": true,
+            "problemMatcher": [],
+            "group": "build"
+        },
+        {
+            "label": "Maven Compile Check",
+            "type": "shell",
+            "command": "cd dash_bord && JAVA_HOME='/c/Program Files/Java/jdk-21' PATH=\"/c/Program Files/Java/jdk-21/bin:$PATH\" ./mvnw compile 2>&1 | tail -50",
+            "isBackground": false,
+            "problemMatcher": [],
+            "group": "build"
+        },
+        {
+            "label": "Backend Server",
+            "type": "shell",
+            "command": "cd dash_bord && JAVA_HOME='/c/Program Files/Java/jdk-21' PATH=\"/c/Program Files/Java/jdk-21/bin:$PATH\" ./mvnw spring-boot:run",
+            "isBackground": true,
+            "problemMatcher": [],
+            "group": "build"
+        },
+        {
+            "label": "Backend Error Check",
+            "type": "shell",
+            "command": "cd dash_bord && JAVA_HOME='/c/Program Files/Java/jdk-21' PATH=\"/c/Program Files/Java/jdk-21/bin:$PATH\" ./mvnw spring-boot:run 2>&1 | grep -A5 -B5 'ERROR\\|Exception\\|error'",
+            "isBackground": false,
+            "problemMatcher": [],
+            "group": "build"
+        },
+        {
+            "label": "Backend Error Detail",
+            "type": "shell",
+            "command": "cd dash_bord && JAVA_HOME='/c/Program Files/Java/jdk-21' PATH=\"/c/Program Files/Java/jdk-21/bin:$PATH\" ./mvnw spring-boot:run -e 2>&1 | grep -E 'ERROR|WARN|Caused by|Exception' | head -30",
+            "isBackground": false,
+            "problemMatcher": [],
+            "group": "build"
+        },
+        {
+            "label": "Backend Full Log",
+            "type": "shell",
+            "command": "cd dash_bord && JAVA_HOME='/c/Program Files/Java/jdk-21' PATH=\"/c/Program Files/Java/jdk-21/bin:$PATH\" ./mvnw spring-boot:run 2>&1 | tail -60",
+            "isBackground": false,
+            "problemMatcher": [],
+            "group": "build"
+        },
+        {
+            "label": "Backend Log To File",
+            "type": "shell",
+            "command": "cd dash_bord && JAVA_HOME='/c/Program Files/Java/jdk-21' PATH=\"/c/Program Files/Java/jdk-21/bin:$PATH\" ./mvnw spring-boot:run > C:/Users/Lenovo/Desktop/sb_output.txt 2>&1; echo 'DONE exit:$?'",
+            "isBackground": false,
+            "problemMatcher": [],
+            "group": "build"
+        },
+        {
+            "label": "Backend Log Errors",
+            "type": "shell",
+            "command": "cd dash_bord && JAVA_HOME='/c/Program Files/Java/jdk-21' PATH=\"/c/Program Files/Java/jdk-21/bin:$PATH\" ./mvnw spring-boot:run > /c/Users/Lenovo/Desktop/full-project/sb_out.txt 2>&1; cat /c/Users/Lenovo/Desktop/full-project/sb_out.txt | grep -v '\\[INFO\\]' | head -50",
+            "isBackground": false,
+            "problemMatcher": [],
+            "group": "build"
+        },
+        {
+            "label": "Check Port 8080",
+            "type": "shell",
+            "command": "netstat -ano | grep :8080 | head -5",
+            "isBackground": false,
+            "problemMatcher": [],
+            "group": "build"
+        },
+        {
+            "label": "Restart Backend",
+            "type": "shell",
+            "command": "taskkill /F /PID 15404 && echo 'Killed' && sleep 2 && cd dash_bord && JAVA_HOME='/c/Program Files/Java/jdk-21' PATH=\"/c/Program Files/Java/jdk-21/bin:$PATH\" ./mvnw spring-boot:run > /c/Users/Lenovo/Desktop/full-project/sb_out.txt 2>&1 &",
+            "isBackground": true,
+            "problemMatcher": [],
+            "group": "build"
+        },
+        {
+            "label": "Kill And Restart",
+            "type": "shell",
+            "command": "cmd /c 'taskkill /F /PID 15404' && sleep 3 && cd dash_bord && JAVA_HOME='/c/Program Files/Java/jdk-21' PATH=\"/c/Program Files/Java/jdk-21/bin:$PATH\" ./mvnw spring-boot:run > /c/Users/Lenovo/Desktop/full-project/sb_out.txt 2>&1 &",
+            "isBackground": true,
+            "problemMatcher": [],
+            "group": "build"
+        },
+        {
+            "label": "Kill Port Restart Backend",
+            "type": "shell",
+            "command": "kill -9 $(netstat -ano 2>/dev/null | grep ':8080.*LISTEN' | awk '{print $NF}' | head -1) 2>/dev/null; sleep 3; cd dash_bord && JAVA_HOME='/c/Program Files/Java/jdk-21' PATH=\"/c/Program Files/Java/jdk-21/bin:$PATH\" ./mvnw spring-boot:run > /c/Users/Lenovo/Desktop/full-project/sb_out.txt 2>&1 &\necho 'Backend starting in background'",
+            "isBackground": true,
+            "problemMatcher": [],
+            "group": "build"
+        },
+        {
+            "label": "Kill Java Process",
+            "type": "shell",
+            "command": "cmd.exe /c \"taskkill /F /PID 15404\" && echo 'killed'",
+            "isBackground": false,
+            "problemMatcher": [],
+            "group": "build"
+        },
+        {
+            "label": "Spring Backend",
+            "type": "shell",
+            "command": "cd dash_bord && JAVA_HOME='/c/Program Files/Java/jdk-21' PATH=\"/c/Program Files/Java/jdk-21/bin:$PATH\" ./mvnw spring-boot:run",
+            "isBackground": true,
+            "problemMatcher": [],
+            "group": "build"
+        },
+        {
+            "label": "Test Login API",
+            "type": "shell",
+            "command": "curl -s -w \"\\nHTTP_CODE:%{http_code}\" http://localhost:8080/api/auth/login -H \"Content-Type: application/json\" -d '{\"email\":\"admin@test.com\",\"password\":\"admin123\"}'",
+            "isBackground": false,
+            "problemMatcher": [],
+            "group": "build"
+        },
+        {
+            "label": "Test Frontend",
+            "type": "shell",
+            "command": "curl -s -o /dev/null -w \"HTTP_CODE:%{http_code}\" http://localhost:8081/",
+            "isBackground": false,
+            "problemMatcher": [],
+            "group": "build"
+        },
+        {
+            "label": "Kill Old Backend",
+            "type": "shell",
+            "command": "cmd.exe /c \"taskkill /F /PID 16068\" && echo killed",
+            "isBackground": false,
+            "problemMatcher": [],
+            "group": "build"
+        },
+        {
+            "label": "Spring Backend",
+            "type": "shell",
+            "command": "cd dash_bord && JAVA_HOME='/c/Program Files/Java/jdk-21' PATH=\"/c/Program Files/Java/jdk-21/bin:$PATH\" ./mvnw spring-boot:run",
+            "isBackground": true,
+            "problemMatcher": [],
+            "group": "build"
+        },
+        {
+            "label": "Test Wrong Password",
+            "type": "shell",
+            "command": "curl -s -w \"\\nHTTP:%{http_code}\" http://localhost:8080/api/auth/login -H \"Content-Type: application/json\" -d '{\"email\":\"admin@test.com\",\"password\":\"wrongpass\"}'",
+            "isBackground": false,
+            "problemMatcher": [],
+            "group": "build"
+        }
+    ]
+}
