@@ -1,0 +1,13 @@
+node_modules/
+project-pulse/
+dash_bord/target/
+dash_bord/.git/
+.gitignore
+.vscode/
+.idea/
+*.log
+.DS_Store
+*.iml
+.env
+.env.local
+.env.*.local
