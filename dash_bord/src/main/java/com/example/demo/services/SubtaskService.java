@@ -110,7 +110,8 @@ public class SubtaskService {
 
         if (request.getAssigneeId() != null) {
             User assignee = userRepository.findById(request.getAssigneeId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Исполнитель не найден: " + request.getAssigneeId()));
+                    .orElseThrow(
+                            () -> new ResourceNotFoundException("Исполнитель не найден: " + request.getAssigneeId()));
 
             validateAssigneeAccess(user, task, assignee);
 
@@ -133,8 +134,12 @@ public class SubtaskService {
         Subtask subtask = getSubtask(subtaskId);
         Task task = subtask.getTask();
 
-        if (user.getRole() != Role.ADMIN && user.getRole() != Role.PM) {
-            throw new AccessDeniedException("Статус подзадачи может менять только администратор или ПМ");
+        if (user.getRole() == Role.TEAM) {
+            if (subtask.getAssignee() == null || !subtask.getAssignee().getId().equals(user.getId())) {
+                throw new AccessDeniedException("Отмечать подзадачу выполненной может только её исполнитель");
+            }
+        } else if (user.getRole() != Role.ADMIN && user.getRole() != Role.PM) {
+            throw new AccessDeniedException("Статус подзадачи может менять только администратор, ПМ или исполнитель");
         }
 
         validateTaskScope(user, task, "STATUS");
@@ -245,7 +250,7 @@ public class SubtaskService {
                 throw new AccessDeniedException("Команда может видеть только связанные с ней подзадачи");
             }
 
-            if (!"VIEW".equals(action)) {
+            if (!"VIEW".equals(action) && !"STATUS".equals(action)) {
                 throw new AccessDeniedException("У роли TEAM нет прав на изменение подзадач");
             }
 
@@ -260,19 +265,12 @@ public class SubtaskService {
     // =========================================================
     private void validateAssigneeAccess(User user, Task task, User assignee) {
         if (user.getRole() == Role.ADMIN) {
+            validateDepartmentTeamAssignee(task, assignee);
             return;
         }
 
         if (user.getRole() == Role.MANAGER) {
-            if (assignee.getRole() != Role.PM && assignee.getRole() != Role.TEAM) {
-                throw new AccessDeniedException("Руководитель может назначать только PM и TEAM");
-            }
-
-            if (task.getProject() == null || task.getProject().getDepartment() == null ||
-                    assignee.getDepartment() == null ||
-                    !task.getProject().getDepartment().getId().equals(assignee.getDepartment().getId())) {
-                throw new AccessDeniedException("Исполнитель подзадачи должен быть из того же отдела");
-            }
+            validateDepartmentTeamAssignee(task, assignee);
             return;
         }
 
@@ -282,16 +280,19 @@ public class SubtaskService {
                 throw new AccessDeniedException("ПМ может назначать исполнителей только в своём проекте");
             }
 
-            if (assignee.getRole() != Role.PM && assignee.getRole() != Role.TEAM) {
-                throw new AccessDeniedException("ПМ может назначать только PM и TEAM");
-            }
+            validateDepartmentTeamAssignee(task, assignee);
+        }
+    }
 
-            if (task.getProject().getDepartment() != null) {
-                if (assignee.getDepartment() == null ||
-                        !task.getProject().getDepartment().getId().equals(assignee.getDepartment().getId())) {
-                    throw new AccessDeniedException("Исполнитель подзадачи должен быть из того же отдела");
-                }
-            }
+    private void validateDepartmentTeamAssignee(Task task, User assignee) {
+        if (assignee.getRole() != Role.TEAM) {
+            throw new AccessDeniedException("Исполнителем подзадачи может быть только сотрудник отдела");
+        }
+
+        if (task.getProject() == null || task.getProject().getDepartment() == null ||
+                assignee.getDepartment() == null ||
+                !task.getProject().getDepartment().getId().equals(assignee.getDepartment().getId())) {
+            throw new AccessDeniedException("Исполнитель подзадачи должен быть сотрудником того же отдела");
         }
     }
 

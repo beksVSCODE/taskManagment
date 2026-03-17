@@ -126,6 +126,14 @@ export function useComments(taskId: string) {
     });
 }
 
+export function useSubtasks(taskId: string) {
+    return useQuery({
+        queryKey: ['subtasks', taskId],
+        queryFn: () => taskService.getSubtasks(taskId),
+        enabled: !!taskId,
+    });
+}
+
 export function useAddComment() {
     const qc = useQueryClient();
     return useMutation({
@@ -234,6 +242,7 @@ export function useAddSubtask() {
         onSuccess: (task) => {
             qc.invalidateQueries({ queryKey: ['tasks', task.projectId] });
             qc.invalidateQueries({ queryKey: ['tasks', 'all'] });
+            qc.invalidateQueries({ queryKey: ['subtasks', task.id] });
         },
     });
 }
@@ -246,6 +255,7 @@ export function useUpdateSubtask() {
         onSuccess: (task) => {
             qc.invalidateQueries({ queryKey: ['tasks', task.projectId] });
             qc.invalidateQueries({ queryKey: ['tasks', 'all'] });
+            qc.invalidateQueries({ queryKey: ['subtasks', task.id] });
             qc.invalidateQueries({ queryKey: ['notifications'] });
         },
     });
@@ -259,6 +269,7 @@ export function useDeleteSubtask() {
         onSuccess: (task) => {
             qc.invalidateQueries({ queryKey: ['tasks', task.projectId] });
             qc.invalidateQueries({ queryKey: ['tasks', 'all'] });
+            qc.invalidateQueries({ queryKey: ['subtasks', task.id] });
         },
     });
 }

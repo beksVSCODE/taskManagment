@@ -89,10 +89,11 @@ export function usePermissions() {
             return false;
         },
 
-        // 10. Change Subtask Status: ADMIN, PM only
-        canChangeSubtaskStatus: (project?: Project) => {
+        // 10. Change Subtask Status: ADMIN, PM, назначенный исполнитель
+        canChangeSubtaskStatus: (subtaskAssigneeId?: string, project?: Project) => {
             if (role === 'ADMIN') return true;
             if (role === 'PM' && project?.pmId === uid) return true;
+            if (role === 'TEAM' && subtaskAssigneeId === uid) return true;
             return false;
         },
 

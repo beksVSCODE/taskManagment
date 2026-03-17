@@ -32,7 +32,7 @@ public class SubtaskController {
     }
 
     @PostMapping("/api/tasks/{taskId}/subtasks")
-    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','PM')")
     public ResponseEntity<SubtaskResponse> create(
             @PathVariable Long taskId,
             @Valid @RequestBody SubtaskRequest request,
@@ -50,7 +50,7 @@ public class SubtaskController {
     }
 
     @PatchMapping("/api/subtasks/{subtaskId}/status")
-    @PreAuthorize("hasAnyRole('ADMIN','PM')")
+    @PreAuthorize("hasAnyRole('ADMIN','PM','TEAM')")
     public ResponseEntity<SubtaskResponse> updateStatus(
             @PathVariable Long subtaskId,
             @Valid @RequestBody SubtaskStatusRequest request,

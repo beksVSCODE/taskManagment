@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Task, User, TaskStatus, Project } from '@/types';
-import { useUpdateTask, useDeleteTask, useAddComment, useUsers, useAddSubtask, useUpdateSubtask, useDeleteSubtask, useComments } from '@/hooks/useData';
+import { useUpdateTask, useDeleteTask, useAddComment, useUsers, useAddSubtask, useUpdateSubtask, useDeleteSubtask, useComments, useSubtasks } from '@/hooks/useData';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useAuth } from '@/contexts/AuthContext';
 import { format, formatDistanceToNow } from 'date-fns';
@@ -33,6 +33,7 @@ export function TaskDetailPanel({ task, project, open, onClose }: Props) {
   const [showMentions, setShowMentions] = useState(false);
   const [mentionFilter, setMentionFilter] = useState('');
   const [showAddSubtask, setShowAddSubtask] = useState(false);
+  const [subtaskErrors, setSubtaskErrors] = useState<{ title?: string; assigneeId?: string; dueDate?: string }>({});
   const [newSubtask, setNewSubtask] = useState<{ title: string; assigneeId: string; dueDate: string }>({
     title: '', assigneeId: '', dueDate: '',
   });
@@ -41,6 +42,7 @@ export function TaskDetailPanel({ task, project, open, onClose }: Props) {
   const { data: users = [] } = useUsers();
   // task может быть null — передаём пустую строку; useComments отключён при enabled:!!taskId
   const { data: comments = [], isLoading: commentsLoading } = useComments(task?.id ?? '');
+  const { data: subtasks = [] } = useSubtasks(task?.id ?? '');
   const updateTask = useUpdateTask();
   const deleteTask = useDeleteTask();
   const addComment = useAddComment();
@@ -56,10 +58,17 @@ export function TaskDetailPanel({ task, project, open, onClose }: Props) {
   const canDelete = permissions.canDeleteTask(task, project);
   const canChangePriority = permissions.canChangePriority(project);
   const canCreateSubtask = permissions.canCreateSubtask(project);
-  const canChangeSubtaskStatus = permissions.canChangeSubtaskStatus(project);
   const canDeleteSubtask = permissions.canDeleteSubtask();
   const isOverdue = task.status !== 'DONE' && new Date(task.dueDate) < new Date();
   const assignees = task.assigneeIds.map(id => users.find(u => u.id === id)).filter(Boolean) as User[];
+  const displayedSubtasks = subtasks.length > 0 || task.subtasks.length === 0 ? subtasks : task.subtasks;
+  const availableSubtaskAssignees = users.filter(user => {
+    const isDepartmentEmployee = project?.department
+      ? user.department === project.department
+      : true;
+
+    return isDepartmentEmployee && user.role === 'TEAM';
+  });
 
   const handleStatusChange = (status: TaskStatus) => {
     updateTask.mutate({ id: task.id, updates: { status } });
@@ -84,9 +93,10 @@ export function TaskDetailPanel({ task, project, open, onClose }: Props) {
   };
 
   const handleSubtaskToggle = (subtaskId: string) => {
-    if (!canChangeSubtaskStatus) return;
-    const st = task.subtasks.find(s => s.id === subtaskId);
+    const st = displayedSubtasks.find(s => s.id === subtaskId);
     if (!st) return;
+    const canToggleSubtask = permissions.canChangeSubtaskStatus(st.assigneeId, project);
+    if (!canToggleSubtask) return;
     updateSubtask.mutate({
       taskId: task.id,
       subtaskId,
@@ -95,16 +105,23 @@ export function TaskDetailPanel({ task, project, open, onClose }: Props) {
   };
 
   const handleAddSubtask = () => {
-    if (!newSubtask.title.trim()) return;
+    const errors: { title?: string; assigneeId?: string; dueDate?: string } = {};
+    if (!newSubtask.title.trim()) errors.title = 'Название обязательно';
+    if (!newSubtask.assigneeId) errors.assigneeId = 'Выберите исполнителя';
+    if (!newSubtask.dueDate) errors.dueDate = 'Укажите срок';
+    setSubtaskErrors(errors);
+    if (Object.keys(errors).length > 0) return;
+
     addSubtask.mutate({
       taskId: task.id,
       subtaskData: {
         title: newSubtask.title.trim(),
         assigneeId: newSubtask.assigneeId || undefined,
         status: 'NEW',
-        dueDate: newSubtask.dueDate ? new Date(newSubtask.dueDate).toISOString() : undefined,
+        dueDate: newSubtask.dueDate || undefined,
       },
     });
+    setSubtaskErrors({});
     setNewSubtask({ title: '', assigneeId: '', dueDate: '' });
     setShowAddSubtask(false);
   };
@@ -248,7 +265,7 @@ export function TaskDetailPanel({ task, project, open, onClose }: Props) {
               <div className="flex items-center justify-between mb-2">
                 <h4 className="text-sm font-medium flex items-center gap-2">
                   <CheckSquare className="w-4 h-4" />
-                  Подзадаफ़и ({task.subtasks.filter(s => s.status === 'DONE').length}/{task.subtasks.length})
+                  Подзадачи ({displayedSubtasks.filter(s => s.status === 'DONE').length}/{displayedSubtasks.length})
                 </h4>
                 {canCreateSubtask && (
                   <Button
@@ -263,29 +280,30 @@ export function TaskDetailPanel({ task, project, open, onClose }: Props) {
                 )}
               </div>
 
-              {task.subtasks.length > 0 && (
+              {displayedSubtasks.length > 0 && (
                 <div className="mb-3 h-1.5 bg-muted rounded-full overflow-hidden">
                   <div
                     className="h-full bg-primary rounded-full transition-all duration-300"
-                    style={{ width: `${(task.subtasks.filter(s => s.status === 'DONE').length / task.subtasks.length) * 100}%` }}
+                    style={{ width: `${(displayedSubtasks.filter(s => s.status === 'DONE').length / displayedSubtasks.length) * 100}%` }}
                   />
                 </div>
               )}
 
-              {task.subtasks.length === 0 && !showAddSubtask && (
+              {displayedSubtasks.length === 0 && !showAddSubtask && (
                 <p className="text-sm text-muted-foreground">Нет подзадач</p>
               )}
 
               <div className="space-y-1">
-                {task.subtasks.map(st => {
+                {displayedSubtasks.map(st => {
                   const stAssignee = users.find(u => u.id === st.assigneeId);
                   const isStOverdue = st.status !== 'DONE' && st.dueDate && new Date(st.dueDate) < new Date();
+                  const canToggleSubtask = permissions.canChangeSubtaskStatus(st.assigneeId, project);
                   return (
                     <div key={st.id} className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-muted/50 group">
                       <Checkbox
                         checked={st.status === 'DONE'}
                         onCheckedChange={() => handleSubtaskToggle(st.id)}
-                        disabled={!canChangeSubtaskStatus}
+                        disabled={!canToggleSubtask}
                       />
                       <span className={`text-sm flex-1 min-w-0 truncate ${st.status === 'DONE' ? 'line-through text-muted-foreground' : ''}`}>
                         {st.title}
@@ -323,32 +341,53 @@ export function TaskDetailPanel({ task, project, open, onClose }: Props) {
                   <Input
                     placeholder="Название подзадачи"
                     value={newSubtask.title}
-                    onChange={e => setNewSubtask(s => ({ ...s, title: e.target.value }))}
+                    onChange={e => {
+                      setNewSubtask(s => ({ ...s, title: e.target.value }));
+                      if (subtaskErrors.title) setSubtaskErrors(s => ({ ...s, title: undefined }));
+                    }}
                     onKeyDown={e => e.key === 'Enter' && handleAddSubtask()}
                     autoFocus
                     className="h-8 text-sm"
                   />
+                  {subtaskErrors.title && <p className="text-xs text-destructive">{subtaskErrors.title}</p>}
                   <div className="flex gap-2">
                     <Select
                       value={newSubtask.assigneeId}
-                      onValueChange={v => setNewSubtask(s => ({ ...s, assigneeId: v }))}
+                      onValueChange={v => {
+                        setNewSubtask(s => ({ ...s, assigneeId: v }));
+                        if (subtaskErrors.assigneeId) setSubtaskErrors(s => ({ ...s, assigneeId: undefined }));
+                      }}
                     >
                       <SelectTrigger className="flex-1 h-8 text-xs">
-                        <SelectValue placeholder="Исполнитель" />
+                        <SelectValue placeholder={availableSubtaskAssignees.length > 0 ? 'Исполнитель' : 'Нет сотрудников отдела'} />
                       </SelectTrigger>
                       <SelectContent>
-                        {users.map(u => (
+                        {availableSubtaskAssignees.map(u => (
                           <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
                         ))}
+                        {availableSubtaskAssignees.length === 0 && (
+                          <div className="px-2 py-1.5 text-xs text-muted-foreground">
+                            Нет сотрудников выбранного отдела
+                          </div>
+                        )}
                       </SelectContent>
                     </Select>
                     <Input
                       type="date"
                       className="flex-1 h-8 text-xs"
                       value={newSubtask.dueDate}
-                      onChange={e => setNewSubtask(s => ({ ...s, dueDate: e.target.value }))}
+                      onChange={e => {
+                        setNewSubtask(s => ({ ...s, dueDate: e.target.value }));
+                        if (subtaskErrors.dueDate) setSubtaskErrors(s => ({ ...s, dueDate: undefined }));
+                      }}
                     />
                   </div>
+                  {(subtaskErrors.assigneeId || subtaskErrors.dueDate) && (
+                    <div className="space-y-1">
+                      {subtaskErrors.assigneeId && <p className="text-xs text-destructive">{subtaskErrors.assigneeId}</p>}
+                      {subtaskErrors.dueDate && <p className="text-xs text-destructive">{subtaskErrors.dueDate}</p>}
+                    </div>
+                  )}
                   <div className="flex gap-2">
                     <Button size="sm" className="h-7 text-xs" onClick={handleAddSubtask} disabled={!newSubtask.title.trim()}>
                       Добавить
@@ -357,7 +396,7 @@ export function TaskDetailPanel({ task, project, open, onClose }: Props) {
                       size="sm"
                       variant="ghost"
                       className="h-7 text-xs"
-                      onClick={() => { setShowAddSubtask(false); setNewSubtask({ title: '', assigneeId: '', dueDate: '' }); }}
+                      onClick={() => { setShowAddSubtask(false); setNewSubtask({ title: '', assigneeId: '', dueDate: '' }); setSubtaskErrors({}); }}
                     >
                       <X className="w-3 h-3 mr-1" />
                       Отмена

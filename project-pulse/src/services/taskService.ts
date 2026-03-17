@@ -87,6 +87,11 @@ export const taskService = {
         }
     },
 
+    getSubtasks: async (taskId: string): Promise<Subtask[]> => {
+        const data = await api.get<Record<string, unknown>[]>(`/tasks/${taskId}/subtasks`);
+        return data.map(mapSubtask);
+    },
+
     create: async (taskData: Omit<Task, 'id' | 'createdAt' | 'auditLog'>): Promise<Task> => {
         const body = {
             title: taskData.title,
