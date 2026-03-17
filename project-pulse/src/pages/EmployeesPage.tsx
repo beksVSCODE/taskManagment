@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useAllTasks, useEmployeesWorkload, useProjects } from '@/hooks/useData';
 import { EmployeeCard } from '@/components/EmployeeCard';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -13,6 +14,7 @@ import { WorkloadStatus } from '@/types';
 const PAGE_SIZE = 9;
 
 export default function EmployeesPage() {
+    const [searchParams, setSearchParams] = useSearchParams();
     const permissions = usePermissions();
     const {
         data: employees = [],
@@ -24,13 +26,45 @@ export default function EmployeesPage() {
     const { data: projects = [] } = useProjects();
     const { data: allTasks = [] } = useAllTasks();
 
-    const [search, setSearch] = useState('');
-    const [department, setDepartment] = useState('ALL');
-    const [project, setProject] = useState('ALL');
-    const [workloadStatus, setWorkloadStatus] = useState<'ALL' | WorkloadStatus>('ALL');
-    const [showWithoutTasks, setShowWithoutTasks] = useState(true);
-    const [showOnlyOverdue, setShowOnlyOverdue] = useState(false);
-    const [page, setPage] = useState(1);
+    const [search, setSearch] = useState(() => searchParams.get('q') ?? '');
+    const [department, setDepartment] = useState(() => searchParams.get('department') ?? 'ALL');
+    const [project, setProject] = useState(() => searchParams.get('project') ?? 'ALL');
+    const [workloadStatus, setWorkloadStatus] = useState<'ALL' | WorkloadStatus>(() => {
+        const status = searchParams.get('workloadStatus');
+        return status === 'GREEN' || status === 'YELLOW' || status === 'RED' ? status : 'ALL';
+    });
+    const [showWithoutTasks, setShowWithoutTasks] = useState(() => searchParams.get('withoutTasks') !== '0');
+    const [showOnlyOverdue, setShowOnlyOverdue] = useState(() => searchParams.get('onlyOverdue') === '1');
+    const [page, setPage] = useState(() => {
+        const value = Number(searchParams.get('page') ?? '1');
+        return Number.isFinite(value) && value > 0 ? value : 1;
+    });
+
+    useEffect(() => {
+        const next = new URLSearchParams();
+
+        if (search.trim()) next.set('q', search.trim());
+        if (department !== 'ALL') next.set('department', department);
+        if (project !== 'ALL') next.set('project', project);
+        if (workloadStatus !== 'ALL') next.set('workloadStatus', workloadStatus);
+        if (!showWithoutTasks) next.set('withoutTasks', '0');
+        if (showOnlyOverdue) next.set('onlyOverdue', '1');
+        if (page > 1) next.set('page', String(page));
+
+        if (next.toString() !== searchParams.toString()) {
+            setSearchParams(next, { replace: true });
+        }
+    }, [
+        search,
+        department,
+        project,
+        workloadStatus,
+        showWithoutTasks,
+        showOnlyOverdue,
+        page,
+        searchParams,
+        setSearchParams,
+    ]);
 
     if (!permissions.canViewEmployeesWorkload) {
         return (

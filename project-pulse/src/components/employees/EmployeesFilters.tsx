@@ -85,9 +85,9 @@ export function EmployeesFilters({
                     </SelectTrigger>
                     <SelectContent>
                         <SelectItem value="ALL">Все статусы</SelectItem>
-                        <SelectItem value="GREEN">GREEN</SelectItem>
-                        <SelectItem value="YELLOW">YELLOW</SelectItem>
-                        <SelectItem value="RED">RED</SelectItem>
+                        <SelectItem value="GREEN">Низкая</SelectItem>
+                        <SelectItem value="YELLOW">Средняя</SelectItem>
+                        <SelectItem value="RED">Высокая</SelectItem>
                     </SelectContent>
                 </Select>
             </div>

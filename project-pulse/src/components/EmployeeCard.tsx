@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { EmployeeWorkload } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { WorkloadIndicator } from '@/components/WorkloadIndicator';
@@ -12,6 +12,7 @@ interface EmployeeCardProps {
 
 export function EmployeeCard({ employee }: EmployeeCardProps) {
     const navigate = useNavigate();
+    const location = useLocation();
     const initials = employee.name
         .split(' ')
         .filter(Boolean)
@@ -29,7 +30,7 @@ export function EmployeeCard({ employee }: EmployeeCardProps) {
                 statusTone === 'YELLOW' && 'border-amber-200/70',
                 statusTone === 'GREEN' && 'border-emerald-200/70',
             )}
-            onClick={() => navigate(`/employees/${employee.id}`)}
+            onClick={() => navigate(`/employees/${employee.id}`, { state: { fromSearch: location.search } })}
         >
             <CardHeader className="space-y-2.5 pb-1.5">
                 <div className="flex items-start justify-between gap-3">

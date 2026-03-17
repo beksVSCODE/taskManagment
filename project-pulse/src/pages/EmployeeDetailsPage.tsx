@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useEmployeeWorkloadDetails } from '@/hooks/useData';
 import { usePermissions } from '@/hooks/usePermissions';
 import { WorkloadIndicator } from '@/components/WorkloadIndicator';
@@ -96,8 +96,10 @@ function getStatusLabel(status?: string) {
 
 export default function EmployeeDetailsPage() {
     const navigate = useNavigate();
+    const location = useLocation();
     const { id } = useParams<{ id: string }>();
     const permissions = usePermissions();
+    const fromSearch = ((location.state as { fromSearch?: string } | null)?.fromSearch) ?? '';
 
     const {
         data,
@@ -136,7 +138,7 @@ export default function EmployeeDetailsPage() {
     if (isError || !data) {
         return (
             <div className="space-y-3">
-                <Button variant="outline" size="sm" onClick={() => navigate('/employees')}>
+                <Button variant="outline" size="sm" onClick={() => navigate(`/employees${fromSearch}`)}>
                     <ArrowLeft className="mr-1.5 h-4 w-4" /> Назад
                 </Button>
                 <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">
@@ -151,7 +153,7 @@ export default function EmployeeDetailsPage() {
             <div className="rounded-xl border border-border/70 bg-card p-4 shadow-sm">
                 <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                     <div className="flex items-start gap-3">
-                        <Button variant="outline" size="sm" onClick={() => navigate('/employees')}>
+                        <Button variant="outline" size="sm" onClick={() => navigate(`/employees${fromSearch}`)}>
                             <ArrowLeft className="mr-1.5 h-4 w-4" /> Назад
                         </Button>
 
