@@ -25,9 +25,5 @@ COPY --from=build /app/target/demo-0.0.1-SNAPSHOT.jar app.jar
 # Expose port (Render will dynamically assign PORT env var)
 EXPOSE 8080
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-  CMD curl -f http://localhost:8080/api/health || exit 1
-
 # Run the application
-CMD ["java", "-jar", "app.jar", "--server.port=${PORT:8080}"]
+CMD ["sh", "-c", "if [ -n \"$DATABASE_URL\" ] && [ -z \"$SPRING_DATASOURCE_URL\" ] && [ -z \"$JDBC_DATABASE_URL\" ]; then export SPRING_DATASOURCE_URL=$(echo \"$DATABASE_URL\" | sed 's#^postgres://#jdbc:postgresql://#'); fi; java -jar app.jar --server.port=${PORT:-8080}"]
