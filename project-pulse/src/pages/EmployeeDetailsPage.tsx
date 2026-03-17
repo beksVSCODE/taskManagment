@@ -47,6 +47,20 @@ function getPriorityBadge(priority: string) {
     }
 }
 
+function getPriorityLabel(priority?: string) {
+    const normalized = priority?.toUpperCase?.() ?? '';
+    switch (normalized) {
+        case 'HIGH':
+            return 'Высокий';
+        case 'LOW':
+            return 'Низкий';
+        case 'MEDIUM':
+            return 'Средний';
+        default:
+            return priority || '—';
+    }
+}
+
 function getStatusBadge(status: string) {
     const normalized = status?.toUpperCase?.() ?? '';
 
@@ -60,6 +74,23 @@ function getStatusBadge(status: string) {
             return 'bg-violet-50 text-violet-700 border-violet-200';
         default:
             return 'bg-slate-50 text-slate-700 border-slate-200';
+    }
+}
+
+function getStatusLabel(status?: string) {
+    const normalized = status?.toUpperCase?.() ?? '';
+    switch (normalized) {
+        case 'NEW':
+            return 'Новая';
+        case 'IN_PROGRESS':
+            return 'В работе';
+        case 'ON_REVIEW':
+        case 'REVIEW':
+            return 'На проверке';
+        case 'DONE':
+            return 'Выполнена';
+        default:
+            return status || '—';
     }
 }
 
@@ -78,9 +109,9 @@ export default function EmployeeDetailsPage() {
     const chartData = useMemo(() => {
         if (!data) return [];
         return [
-            { name: 'Active', value: data.taskStatusStats.active },
-            { name: 'Completed', value: data.taskStatusStats.completed },
-            { name: 'Overdue', value: data.taskStatusStats.overdue },
+            { name: 'Активные', value: data.taskStatusStats.active },
+            { name: 'Выполненные', value: data.taskStatusStats.completed },
+            { name: 'Просроченные', value: data.taskStatusStats.overdue },
         ];
     }, [data]);
 
@@ -152,10 +183,10 @@ export default function EmployeeDetailsPage() {
             </div>
 
             <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
-                <StatCard title="Total Tasks" value={data.statistics.totalTasks} icon={<ListTodo className="h-4 w-4" />} />
-                <StatCard title="Active" value={data.statistics.activeTasks} icon={<Clock3 className="h-4 w-4" />} />
-                <StatCard title="Completed" value={data.statistics.completedTasks} icon={<CheckCircle2 className="h-4 w-4" />} />
-                <StatCard title="Overdue" value={data.statistics.overdueTasks} icon={<AlertTriangle className="h-4 w-4" />} danger={data.statistics.overdueTasks > 0} />
+                <StatCard title="Всего задач" value={data.statistics.totalTasks} icon={<ListTodo className="h-4 w-4" />} />
+                <StatCard title="Активные" value={data.statistics.activeTasks} icon={<Clock3 className="h-4 w-4" />} />
+                <StatCard title="Выполненные" value={data.statistics.completedTasks} icon={<CheckCircle2 className="h-4 w-4" />} />
+                <StatCard title="Просроченные" value={data.statistics.overdueTasks} icon={<AlertTriangle className="h-4 w-4" />} danger={data.statistics.overdueTasks > 0} />
             </div>
 
             <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,7fr)_minmax(300px,3fr)]">
@@ -170,11 +201,11 @@ export default function EmployeeDetailsPage() {
                             <Table>
                                 <TableHeader>
                                     <TableRow>
-                                        <TableHead>Title</TableHead>
-                                        <TableHead>Project</TableHead>
-                                        <TableHead>Priority</TableHead>
-                                        <TableHead>Status</TableHead>
-                                        <TableHead>Deadline</TableHead>
+                                        <TableHead>Задача</TableHead>
+                                        <TableHead>Проект</TableHead>
+                                        <TableHead>Приоритет</TableHead>
+                                        <TableHead>Статус</TableHead>
+                                        <TableHead>Дедлайн</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -190,12 +221,12 @@ export default function EmployeeDetailsPage() {
                                             <TableCell>{task.project || '—'}</TableCell>
                                             <TableCell>
                                                 <Badge variant="outline" className={cn('font-medium', getPriorityBadge(task.priority))}>
-                                                    {task.priority || '—'}
+                                                    {getPriorityLabel(task.priority)}
                                                 </Badge>
                                             </TableCell>
                                             <TableCell>
                                                 <Badge variant="outline" className={cn('font-medium', getStatusBadge(task.status))}>
-                                                    {task.status || '—'}
+                                                    {getStatusLabel(task.status)}
                                                 </Badge>
                                             </TableCell>
                                             <TableCell className={task.isOverdue ? 'font-semibold text-red-600' : ''}>

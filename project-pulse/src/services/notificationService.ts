@@ -1,12 +1,36 @@
 import { AppNotification, NotificationType } from '@/types';
 import { api } from './apiClient';
 
+function localizeNotificationMessage(message: string): string {
+    const replacements: Array<[RegExp, string]> = [
+        [/\bIN_PROGRESS\b/gi, 'В работе'],
+        [/\bON_REVIEW\b/gi, 'На проверке'],
+        [/\bREVIEW\b/gi, 'На проверке'],
+        [/\bDONE\b/gi, 'Выполнено'],
+        [/\bNEW\b/gi, 'Новая'],
+        [/\bHIGH\b/gi, 'Высокий'],
+        [/\bMEDIUM\b/gi, 'Средний'],
+        [/\bLOW\b/gi, 'Низкий'],
+        [/\bin progress\b/gi, 'в работе'],
+        [/\bon review\b/gi, 'на проверке'],
+        [/\bdone\b/gi, 'выполнено'],
+        [/\bnew\b/gi, 'новая'],
+        [/\bhigh\b/gi, 'высокий'],
+        [/\bmedium\b/gi, 'средний'],
+        [/\blow\b/gi, 'низкий'],
+    ];
+
+    return replacements.reduce((acc, [pattern, value]) => acc.replace(pattern, value), message);
+}
+
 function mapNotification(n: Record<string, unknown>): AppNotification {
+    const rawMessage = (n.message as string) || '';
+
     return {
         id: String(n.id),
         userId: '',          // бэкенд не возвращает userId — текущий пользователь
         type: (n.type as NotificationType),
-        message: n.message as string,
+        message: localizeNotificationMessage(rawMessage),
         taskId: n.taskId ? String(n.taskId) : undefined,
         taskTitle: n.taskTitle as string | undefined,
         read: !!(n.isRead ?? n.read),

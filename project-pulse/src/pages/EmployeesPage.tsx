@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useEmployeesWorkload, useProjects } from '@/hooks/useData';
+import { useAllTasks, useEmployeesWorkload, useProjects } from '@/hooks/useData';
 import { EmployeeCard } from '@/components/EmployeeCard';
 import { usePermissions } from '@/hooks/usePermissions';
 import { Users, ShieldAlert } from 'lucide-react';
@@ -22,6 +22,7 @@ export default function EmployeesPage() {
         refetch,
     } = useEmployeesWorkload();
     const { data: projects = [] } = useProjects();
+    const { data: allTasks = [] } = useAllTasks();
 
     const [search, setSearch] = useState('');
     const [department, setDepartment] = useState('ALL');
@@ -70,7 +71,23 @@ export default function EmployeesPage() {
     const visibleProjects = projects.filter(p => permissions.canViewProject(p));
 
     const projectOptions = visibleProjects
-        .map(p => ({ id: p.id, label: p.name, pmId: p.pmId, memberIds: p.teamMemberIds ?? [] }))
+        .map(p => {
+            const assigneeIds = Array.from(
+                new Set(
+                    allTasks
+                        .filter(t => t.projectId === p.id)
+                        .flatMap(t => t.assigneeIds ?? []),
+                ),
+            );
+
+            return {
+                id: p.id,
+                label: p.name,
+                pmId: p.pmId,
+                memberIds: p.teamMemberIds ?? [],
+                assigneeIds,
+            };
+        })
         .sort((a, b) => a.label.localeCompare(b.label, 'ru'));
 
     const departmentOptions = Array.from(
@@ -98,7 +115,8 @@ export default function EmployeesPage() {
                 }
                 const isPm = selectedProject.pmId === employee.id;
                 const isMember = selectedProject.memberIds.includes(employee.id);
-                if (!isPm && !isMember) {
+                const isAssignee = selectedProject.assigneeIds.includes(employee.id);
+                if (!isPm && !isMember && !isAssignee) {
                     return false;
                 }
             }
@@ -190,7 +208,7 @@ export default function EmployeesPage() {
                 />
             ) : (
                 <>
-                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+                    <div className="grid grid-cols-1 items-stretch gap-3 md:grid-cols-2 xl:grid-cols-3">
                         {pagedEmployees.map(employee => (
                             <EmployeeCard key={employee.id} employee={employee} />
                         ))}

@@ -24,11 +24,9 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -48,7 +46,7 @@ public class EmployeeWorkloadService {
 
     public List<EmployeeWorkloadDTO> getEmployeesWorkload(String requesterEmail) {
         User requester = getUserByEmail(requesterEmail);
-        List<User> visibleEmployees = resolveVisibleEmployeesFixedForPM(requester);
+        List<User> visibleEmployees = resolveVisibleEmployeesForWorkload(requester);
 
         if (visibleEmployees.isEmpty()) {
             return List.of();
@@ -91,27 +89,33 @@ public class EmployeeWorkloadService {
                 .toList();
     }
 
-    // Исправленная логика для PM: возвращает всех участников проектов PM, даже если
-    // у них нет задач
-    private List<User> resolveVisibleEmployeesFixedForPM(User requester) {
-        if (requester.getRole() == Role.ADMIN || requester.getRole() == Role.MANAGER) {
+    // Единая логика видимости для страницы загруженности
+    // ADMIN: все активные сотрудники
+    // MANAGER: только сотрудники своего отдела
+    // PM: только сотрудники своего отдела
+    private List<User> resolveVisibleEmployeesForWorkload(User requester) {
+        if (requester.getRole() == null) {
+            throw new AccessDeniedException("Роль пользователя не определена");
+        }
+
+        if (requester.getRole() == Role.ADMIN) {
             return userRepository.findAllActiveWithDepartment();
         }
-        if (requester.getRole() == Role.PM) {
-            // Получаем id проектов, где PM — requester
-            List<Long> projectIds = departmentRepository.findProjectIdsByPmId(requester.getId());
-            if (projectIds.isEmpty())
-                return List.of();
-            // Получаем всех пользователей, которые участвуют в этих проектах
-            return userRepository.findActiveUsersByProjectIds(projectIds);
+
+        if (requester.getRole() == Role.MANAGER) {
+            return resolveManagerEmployees(requester);
         }
-        // TEAM видит только себя
-        return List.of(requester);
+
+        if (requester.getRole() == Role.PM) {
+            return resolvePmEmployeesByDepartment(requester);
+        }
+
+        throw new AccessDeniedException("Недостаточно прав для просмотра загруженности сотрудников");
     }
 
     public EmployeeWorkloadDetailsDTO getEmployeeWorkloadDetails(Long employeeId, String requesterEmail) {
         User requester = getUserByEmail(requesterEmail);
-        List<User> visibleEmployees = resolveVisibleEmployees(requester);
+        List<User> visibleEmployees = resolveVisibleEmployeesForWorkload(requester);
 
         User employee = visibleEmployees.stream()
                 .filter(u -> u.getId().equals(employeeId))
@@ -202,19 +206,6 @@ public class EmployeeWorkloadService {
         return details;
     }
 
-    private List<User> resolveVisibleEmployees(User requester) {
-        if (requester.getRole() == null) {
-            throw new AccessDeniedException("Роль пользователя не определена");
-        }
-
-        return switch (requester.getRole()) {
-            case ADMIN -> userRepository.findAllActiveWithDepartment();
-            case MANAGER -> resolveManagerEmployees(requester);
-            case PM -> resolvePmEmployees(requester);
-            default -> throw new AccessDeniedException("Недостаточно прав для просмотра загруженности сотрудников");
-        };
-    }
-
     private List<User> resolveManagerEmployees(User manager) {
         Department department = departmentRepository.findFirstByManagerId(manager.getId())
                 .orElseThrow(() -> new AccessDeniedException("Для руководителя не найден отдел"));
@@ -229,18 +220,20 @@ public class EmployeeWorkloadService {
         return users;
     }
 
-    private List<User> resolvePmEmployees(User pm) {
-        List<Long> userIds = taskAssigneeRepository.findDistinctActiveUserIdsByPmId(pm.getId());
-        if (userIds.isEmpty()) {
-            return pm.isActive() ? List.of(pm) : List.of();
+    private List<User> resolvePmEmployeesByDepartment(User pm) {
+        if (pm.getDepartment() == null || pm.getDepartment().getId() == null) {
+            throw new AccessDeniedException("Для PM не найден отдел");
         }
 
-        Set<Long> ids = new LinkedHashSet<>(userIds);
-        if (pm.isActive()) {
-            ids.add(pm.getId());
+        List<User> users = new ArrayList<>(
+                userRepository.findActiveByDepartmentIdWithDepartment(pm.getDepartment().getId()));
+
+        boolean containsPm = users.stream().anyMatch(u -> u.getId().equals(pm.getId()));
+        if (!containsPm && pm.isActive()) {
+            users.add(pm);
         }
 
-        return userRepository.findActiveByIdsWithDepartment(new ArrayList<>(ids));
+        return users;
     }
 
     private Stats computeStats(List<TaskAssignee> assignments) {
