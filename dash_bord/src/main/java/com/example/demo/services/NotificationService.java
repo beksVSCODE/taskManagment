@@ -55,7 +55,7 @@ public class NotificationService {
     // =========================================================
     public boolean wasOverdueNotificationSentToday(Long taskId, Long userId) {
         LocalDateTime startOfDay = LocalDate.now().atStartOfDay();
-        LocalDateTime endOfDay   = startOfDay.plusDays(1);
+        LocalDateTime endOfDay = startOfDay.plusDays(1);
 
         return notificationRepository
                 .existsByTaskIdAndUserIdAndTypeAndCreatedAtBetween(
@@ -108,8 +108,7 @@ public class NotificationService {
     // При открытии задачи — читаем все уведомления по ней
     // =========================================================
     public void markTaskNotificationsAsRead(Long taskId, Long userId) {
-        List<Notification> notifications =
-                notificationRepository.findByTaskIdAndUserIdAndIsReadFalse(taskId, userId);
+        List<Notification> notifications = notificationRepository.findByTaskIdAndUserIdAndIsReadFalse(taskId, userId);
         notifications.forEach(n -> n.setRead(true));
         notificationRepository.saveAll(notifications);
     }

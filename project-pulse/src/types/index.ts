@@ -173,6 +173,7 @@ export interface EmployeeWorkload {
     activeTasks: number;
     completedTasks: number;
     overdueTasks: number;
+    workloadPercent?: number;
     workloadStatus: WorkloadStatus;
 }
 
@@ -204,6 +205,7 @@ export interface EmployeeWorkloadDetails {
         activeTasks: number;
         completedTasks: number;
         overdueTasks: number;
+        workloadPercent?: number;
         workloadStatus: WorkloadStatus;
     };
     projects: EmployeeProject[];

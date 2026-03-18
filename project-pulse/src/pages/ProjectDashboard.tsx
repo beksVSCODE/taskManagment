@@ -1,5 +1,5 @@
-import { useState, useMemo } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useState, useMemo, useEffect } from 'react';
+import { useParams, Link, useSearchParams } from 'react-router-dom';
 import { useProject, useTasks, useUsers } from '@/hooks/useData';
 import { KanbanBoard } from '@/components/KanbanBoard';
 import { TaskDetailPanel } from '@/components/TaskDetailPanel';
@@ -13,12 +13,35 @@ import { Button } from '@/components/ui/button';
 
 export default function ProjectDashboard() {
   const { id } = useParams<{ id: string }>();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { data: project } = useProject(id!);
   const { data: tasks = [] } = useTasks(id!);
   const { data: users = [] } = useUsers();
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [filters, setFilters] = useState<FilterState>(defaultFilters);
+  const taskIdFromQuery = searchParams.get('taskId');
+
+  useEffect(() => {
+    if (!taskIdFromQuery) return;
+    const taskFromQuery = tasks.find(t => t.id === taskIdFromQuery);
+    if (!taskFromQuery) return;
+    setSelectedTask(prev => (prev?.id === taskFromQuery.id ? prev : taskFromQuery));
+  }, [taskIdFromQuery, tasks]);
+
+  const openTask = (task: Task) => {
+    setSelectedTask(task);
+    const next = new URLSearchParams(searchParams);
+    next.set('taskId', task.id);
+    setSearchParams(next, { replace: true });
+  };
+
+  const closeTask = () => {
+    setSelectedTask(null);
+    const next = new URLSearchParams(searchParams);
+    next.delete('taskId');
+    setSearchParams(next, { replace: true });
+  };
 
   const filteredTasks = useMemo(() => {
     let result = [...tasks];
@@ -83,7 +106,7 @@ export default function ProjectDashboard() {
 
         <TabsContent value="kanban" className="space-y-4 mt-4">
           <TaskFilters filters={filters} onChange={setFilters} users={users} />
-          <KanbanBoard tasks={filteredTasks} users={users} project={project} onTaskClick={setSelectedTask} onCreateClick={() => setCreateOpen(true)} />
+          <KanbanBoard tasks={filteredTasks} users={users} project={project} onTaskClick={openTask} onCreateClick={() => setCreateOpen(true)} />
         </TabsContent>
 
         <TabsContent value="analytics" className="mt-4">
@@ -91,7 +114,7 @@ export default function ProjectDashboard() {
         </TabsContent>
       </Tabs>
 
-      <TaskDetailPanel task={currentSelectedTask} project={project} open={!!selectedTask} onClose={() => setSelectedTask(null)} />
+      <TaskDetailPanel task={currentSelectedTask} project={project} open={!!selectedTask} onClose={closeTask} />
       <CreateTaskModal open={createOpen} onClose={() => setCreateOpen(false)} project={project} />
     </div>
   );

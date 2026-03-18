@@ -2,6 +2,9 @@ import { api } from './apiClient';
 import { EmployeeProject, EmployeeTask, EmployeeWorkload, EmployeeWorkloadDetails, WorkloadStatus } from '@/types';
 
 function toWorkloadStatus(value: unknown): WorkloadStatus {
+    if (value === 'ORANGE') {
+        return 'RED';
+    }
     if (value === 'RED' || value === 'YELLOW' || value === 'GREEN') {
         return value;
     }
@@ -18,6 +21,7 @@ function mapEmployeeWorkload(item: Record<string, unknown>): EmployeeWorkload {
         activeTasks: Number(item.activeTasks ?? 0),
         completedTasks: Number(item.completedTasks ?? 0),
         overdueTasks: Number(item.overdueTasks ?? 0),
+        workloadPercent: Number(item.workloadPercent ?? 0),
         workloadStatus: toWorkloadStatus(item.workloadStatus),
     };
 }
@@ -59,6 +63,7 @@ function mapEmployeeWorkloadDetails(data: Record<string, unknown>): EmployeeWork
             activeTasks: Number(statistics.activeTasks ?? 0),
             completedTasks: Number(statistics.completedTasks ?? 0),
             overdueTasks: Number(statistics.overdueTasks ?? 0),
+            workloadPercent: Number(statistics.workloadPercent ?? 0),
             workloadStatus: toWorkloadStatus(statistics.workloadStatus),
         },
         projects: ((data.projects as Record<string, unknown>[]) || []).map(mapEmployeeProject),

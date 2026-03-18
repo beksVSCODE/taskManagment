@@ -6,6 +6,7 @@ interface WorkloadIndicatorProps {
     status?: WorkloadStatus;
     compact?: boolean;
     totalTasks?: number;
+    workloadPercent?: number;
     showProgress?: boolean;
     className?: string;
 }
@@ -46,6 +47,7 @@ export function WorkloadIndicator({
     status,
     compact = false,
     totalTasks,
+    workloadPercent,
     showProgress = false,
     className,
 }: WorkloadIndicatorProps) {
@@ -53,6 +55,9 @@ export function WorkloadIndicator({
     const cfg = statusConfig[value];
 
     const progress = (() => {
+        if (typeof workloadPercent === 'number' && Number.isFinite(workloadPercent)) {
+            return Math.max(0, Math.min(100, Math.round(workloadPercent)));
+        }
         if (typeof totalTasks === 'number' && totalTasks > 0) {
             return Math.min(100, Math.round((activeTasks / totalTasks) * 100));
         }

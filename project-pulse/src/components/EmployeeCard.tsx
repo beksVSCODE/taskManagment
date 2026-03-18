@@ -62,6 +62,7 @@ export function EmployeeCard({ employee }: EmployeeCardProps) {
                 <WorkloadIndicator
                     activeTasks={employee.activeTasks}
                     totalTasks={employee.totalTasks}
+                    workloadPercent={employee.workloadPercent}
                     status={employee.workloadStatus}
                     showProgress
                 />

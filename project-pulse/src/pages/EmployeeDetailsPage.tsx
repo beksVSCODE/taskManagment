@@ -177,6 +177,7 @@ export default function EmployeeDetailsPage() {
                         <WorkloadIndicator
                             activeTasks={data.statistics.activeTasks}
                             totalTasks={data.statistics.totalTasks}
+                            workloadPercent={data.statistics.workloadPercent}
                             status={data.statistics.workloadStatus}
                             showProgress
                         />

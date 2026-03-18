@@ -33,6 +33,7 @@ function mapNotification(n: Record<string, unknown>): AppNotification {
         message: localizeNotificationMessage(rawMessage),
         taskId: n.taskId ? String(n.taskId) : undefined,
         taskTitle: n.taskTitle as string | undefined,
+        projectId: n.projectId ? String(n.projectId) : undefined,
         read: !!(n.isRead ?? n.read),
         createdAt: (n.createdAt as string) || new Date().toISOString(),
     };

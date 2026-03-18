@@ -33,7 +33,7 @@ export default function EmployeesPage() {
         const status = searchParams.get('workloadStatus');
         return status === 'GREEN' || status === 'YELLOW' || status === 'RED' ? status : 'ALL';
     });
-    const [showWithoutTasks, setShowWithoutTasks] = useState(() => searchParams.get('withoutTasks') !== '0');
+    const [showWithoutTasks, setShowWithoutTasks] = useState(() => searchParams.get('withoutTasks') === '1');
     const [showOnlyOverdue, setShowOnlyOverdue] = useState(() => searchParams.get('onlyOverdue') === '1');
     const [page, setPage] = useState(() => {
         const value = Number(searchParams.get('page') ?? '1');
@@ -47,7 +47,7 @@ export default function EmployeesPage() {
         if (department !== 'ALL') next.set('department', department);
         if (project !== 'ALL') next.set('project', project);
         if (workloadStatus !== 'ALL') next.set('workloadStatus', workloadStatus);
-        if (!showWithoutTasks) next.set('withoutTasks', '0');
+        if (showWithoutTasks) next.set('withoutTasks', '1');
         if (showOnlyOverdue) next.set('onlyOverdue', '1');
         if (page > 1) next.set('page', String(page));
 
@@ -180,7 +180,7 @@ export default function EmployeesPage() {
         setDepartment('ALL');
         setProject('ALL');
         setWorkloadStatus('ALL');
-        setShowWithoutTasks(true);
+        setShowWithoutTasks(false);
         setShowOnlyOverdue(false);
         setPage(1);
     };

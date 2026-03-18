@@ -1,11 +1,12 @@
-import { Bell, UserPlus, RefreshCw, MessageSquare, AlertTriangle, Check } from 'lucide-react';
+import { Bell, UserPlus, RefreshCw, MessageSquare, AlertTriangle, Check, TrendingUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { useNotifications, useMarkAllNotificationsRead, useMarkNotificationRead } from '@/hooks/useData';
+import { useNotifications, useMarkAllNotificationsRead, useMarkNotificationRead, useAllTasks } from '@/hooks/useData';
 import { formatDistanceToNow } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { AppNotification } from '@/types';
+import { useNavigate } from 'react-router-dom';
 
 const notifConfig: Record<string, { icon: React.ComponentType<{className?: string}>; color: string; bg: string }> = {
   TASK_ASSIGNED:  { icon: UserPlus,     color: 'text-blue-600',    bg: 'bg-blue-50' },
@@ -13,6 +14,7 @@ const notifConfig: Record<string, { icon: React.ComponentType<{className?: strin
   NEW_COMMENT:    { icon: MessageSquare,color: 'text-emerald-600', bg: 'bg-emerald-50' },
   MENTION:        { icon: MessageSquare,color: 'text-teal-600',    bg: 'bg-teal-50' },
   TASK_OVERDUE:   { icon: AlertTriangle,color: 'text-red-600',     bg: 'bg-red-50' },
+  WORKLOAD_ALERT: { icon: TrendingUp,   color: 'text-orange-600',  bg: 'bg-orange-50' },
   // совместимость со старыми названиями
   assigned:       { icon: UserPlus,     color: 'text-blue-600',    bg: 'bg-blue-50' },
   status_changed: { icon: RefreshCw,    color: 'text-violet-600',  bg: 'bg-violet-50' },
@@ -21,10 +23,43 @@ const notifConfig: Record<string, { icon: React.ComponentType<{className?: strin
 };
 
 export function NotificationCenter() {
+  const navigate = useNavigate();
   const { data: notifications = [] } = useNotifications();
+  const { data: allTasks = [] } = useAllTasks();
   const markAllRead = useMarkAllNotificationsRead();
   const markRead = useMarkNotificationRead();
   const unreadCount = notifications.filter(n => !n.read).length;
+
+  const getNotificationTarget = (n: AppNotification): string | null => {
+    if (!n.taskId) {
+      if (n.projectId) {
+        return `/project/${n.projectId}`;
+      }
+      return null;
+    }
+
+    const task = allTasks.find(t => t.id === n.taskId);
+    if (task?.projectId) {
+      return `/project/${task.projectId}?taskId=${task.id}`;
+    }
+
+    if (n.projectId) {
+      return `/project/${n.projectId}?taskId=${n.taskId}`;
+    }
+
+    return null;
+  };
+
+  const handleNotificationClick = (n: AppNotification) => {
+    if (!n.read) {
+      markRead.mutate(n.id);
+    }
+
+    const target = getNotificationTarget(n);
+    if (target) {
+      navigate(target);
+    }
+  };
 
   return (
     <Popover>
@@ -71,7 +106,7 @@ export function NotificationCenter() {
           ) : (
             <div className="py-1">
               {notifications.slice(0, 25).map(n => {
-                const cfg = notifConfig[n.type];
+                const cfg = notifConfig[n.type] ?? { icon: Bell, color: 'text-muted-foreground', bg: 'bg-muted' };
                 const Icon = cfg.icon;
                 return (
                   <div
@@ -79,7 +114,7 @@ export function NotificationCenter() {
                     className={`flex items-start gap-3 px-4 py-3 cursor-pointer hover:bg-muted/40 transition-colors border-b border-border/30 last:border-0 ${
                       !n.read ? 'bg-primary/3' : ''
                     }`}
-                    onClick={() => !n.read && markRead.mutate(n.id)}
+                    onClick={() => handleNotificationClick(n)}
                   >
                     {/* Icon */}
                     <div className={`w-8 h-8 rounded-full ${cfg.bg} flex items-center justify-center flex-shrink-0 mt-0.5`}>

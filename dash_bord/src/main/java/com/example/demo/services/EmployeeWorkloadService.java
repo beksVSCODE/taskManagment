@@ -288,18 +288,15 @@ public class EmployeeWorkloadService {
 
     /**
      * Статус загруженности по проценту:
-     * 0–49% → GREEN
-     * 50–79% → YELLOW
-     * 80–100% → ORANGE
-     * >100% → RED
+     * 10–50% → GREEN (низкая)
+     * 50–80% → YELLOW (средняя)
+     * 80–100%+ → RED (высокая)
      */
     String resolveWorkloadStatus(double workloadPercent) {
         if (workloadPercent < 50)
             return "GREEN";
         if (workloadPercent < 80)
             return "YELLOW";
-        if (workloadPercent <= 100)
-            return "ORANGE";
         return "RED";
     }
 

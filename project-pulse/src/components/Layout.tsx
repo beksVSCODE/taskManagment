@@ -119,7 +119,7 @@ export function Layout() {
 
           {/* ── Управление ── */}
           <SectionLabel>Управление</SectionLabel>
-          <NavItem to="/team"        icon={Users}    label="Команда" />
+          {/* <NavItem to="/team"        icon={Users}    label="Команда" /> */}
           {canViewEmployeesWorkload && (
             <NavItem to="/employees" icon={UserRound} label="Сотрудники" />
           )}
