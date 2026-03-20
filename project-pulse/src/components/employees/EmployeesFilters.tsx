@@ -98,7 +98,7 @@ export function EmployeesFilters({
                         checked={showWithoutTasks}
                         onCheckedChange={v => onShowWithoutTasksChange(Boolean(v))}
                     />
-                    <span>Показать сотрудников без задач</span>
+                    <span>Показать только сотрудников без задач</span>
                 </label>
 
                 <label className="flex items-center gap-2 text-sm">

@@ -10,12 +10,14 @@ import { EmployeesEmptyState } from '@/components/employees/EmployeesEmptyState'
 import { EmployeesErrorState } from '@/components/employees/EmployeesErrorState';
 import { EmployeesPagination } from '@/components/employees/EmployeesPagination';
 import { WorkloadStatus } from '@/types';
+import { useAuth } from '@/contexts/AuthContext';
 
 const PAGE_SIZE = 9;
 
 export default function EmployeesPage() {
     const [searchParams, setSearchParams] = useSearchParams();
     const permissions = usePermissions();
+    const { currentUser } = useAuth();
     const {
         data: employees = [],
         isLoading,
@@ -124,8 +126,20 @@ export default function EmployeesPage() {
         })
         .sort((a, b) => a.label.localeCompare(b.label, 'ru'));
 
+    const scopedEmployees = employees.filter(employee => {
+        if (currentUser?.role === 'ADMIN') {
+            return true;
+        }
+
+        if (!currentUser?.department) {
+            return true;
+        }
+
+        return employee.department === currentUser.department;
+    });
+
     const departmentOptions = Array.from(
-        new Set(employees.map(e => e.department).filter(Boolean)),
+        new Set(scopedEmployees.map(e => e.department).filter(Boolean)),
     )
         .map(dept => ({ id: dept, label: dept }))
         .sort((a, b) => a.label.localeCompare(b.label, 'ru'));
@@ -133,7 +147,7 @@ export default function EmployeesPage() {
     const filteredEmployees = (() => {
         const q = search.trim().toLowerCase();
 
-        return employees.filter(employee => {
+        return scopedEmployees.filter(employee => {
             if (q && !employee.name.toLowerCase().includes(q)) {
                 return false;
             }
@@ -159,7 +173,7 @@ export default function EmployeesPage() {
                 return false;
             }
 
-            if (!showWithoutTasks && employee.totalTasks === 0) {
+            if (showWithoutTasks && employee.totalTasks > 0) {
                 return false;
             }
 
@@ -194,7 +208,7 @@ export default function EmployeesPage() {
                 <div>
                     <h1 className="text-xl font-bold text-foreground">Сотрудники</h1>
                     <p className="text-sm text-muted-foreground">
-                        Загруженность команды: {filteredEmployees.length} из {employees.length} сотрудников
+                        Загруженность команды: {filteredEmployees.length} из {scopedEmployees.length} сотрудников
                     </p>
                 </div>
             </div>
