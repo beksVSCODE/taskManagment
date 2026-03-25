@@ -59,9 +59,9 @@ export default function Notifications() {
   };
 
   return (
-    <div className="max-w-2xl space-y-6">
+    <div className="max-w-2xl w-full space-y-5 sm:space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
             <Bell className="w-5 h-5 text-primary" />
@@ -77,7 +77,7 @@ export default function Notifications() {
           <Button
             variant="outline"
             size="sm"
-            className="gap-2 text-xs"
+            className="gap-2 text-xs w-full sm:w-auto"
             onClick={() => markAllRead.mutate()}
           >
             <CheckCheck className="w-3.5 h-3.5" />

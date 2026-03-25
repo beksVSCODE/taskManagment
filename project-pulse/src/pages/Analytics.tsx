@@ -18,9 +18,9 @@ export default function Analytics() {
     : allTasks.filter(t => t.projectId === projectId);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5 sm:space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
             <BarChart3 className="w-5 h-5 text-primary" />
@@ -34,10 +34,10 @@ export default function Analytics() {
         </div>
 
         {/* Project filter */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 w-full sm:w-auto">
           <FolderKanban className="w-4 h-4 text-muted-foreground" />
           <Select value={projectId} onValueChange={setProjectId}>
-            <SelectTrigger className="w-52 h-9 text-sm">
+            <SelectTrigger className="w-full sm:w-52 h-9 text-sm">
               <SelectValue placeholder="Все проекты" />
             </SelectTrigger>
             <SelectContent>

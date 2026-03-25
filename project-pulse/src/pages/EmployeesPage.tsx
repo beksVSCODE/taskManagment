@@ -200,14 +200,14 @@ export default function EmployeesPage() {
     };
 
     return (
-        <div className="space-y-6">
-            <div className="flex items-center gap-3">
+        <div className="space-y-5 sm:space-y-6">
+            <div className="flex items-start gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
                     <Users className="h-5 w-5 text-primary" />
                 </div>
-                <div>
+                <div className="min-w-0">
                     <h1 className="text-xl font-bold text-foreground">Сотрудники</h1>
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-sm text-muted-foreground break-words">
                         Загруженность команды: {filteredEmployees.length} из {scopedEmployees.length} сотрудников
                     </p>
                 </div>

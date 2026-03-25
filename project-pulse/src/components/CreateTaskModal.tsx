@@ -104,7 +104,7 @@ export function CreateTaskModal({ open, onClose, project }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={() => { resetForm(); onClose(); }}>
-      <DialogContent className="max-w-2xl max-h-[88vh] overflow-y-auto rounded-2xl">
+      <DialogContent className="w-[calc(100vw-1rem)] sm:w-full max-w-2xl max-h-[88vh] overflow-y-auto rounded-2xl p-4 sm:p-6">
         <DialogHeader>
           <DialogTitle className="text-lg font-bold">Создать задачу</DialogTitle>
         </DialogHeader>
@@ -186,7 +186,7 @@ export function CreateTaskModal({ open, onClose, project }: Props) {
           </div>
 
           {/* Dates */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Дата начала</Label>
               <Popover>
@@ -244,12 +244,12 @@ export function CreateTaskModal({ open, onClose, project }: Props) {
                   ))}
                 </SelectContent>
               </Select>
-              <div className="flex gap-1.5">
+              <div className="flex gap-1.5 w-full sm:w-auto">
                 <Input
                   value={newTag}
                   onChange={e => setNewTag(e.target.value)}
                   placeholder="Новый тег"
-                  className="w-32 rounded-lg text-sm"
+                  className="w-full sm:w-32 rounded-lg text-sm"
                   onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addTag())}
                 />
                 <Button variant="outline" size="icon" onClick={addTag} className="rounded-lg h-9 w-9 flex-shrink-0">

@@ -77,14 +77,14 @@ export default function Dashboard() {
   const recentNotifications = notifications.filter(n => !n.read).slice(0, 4);
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-5 sm:space-y-7">
       {/* Header */}
-      <div className="flex items-start gap-4">
+      <div className="flex items-start gap-3 sm:gap-4">
         <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
           <TrendingUp className="w-6 h-6 text-primary" />
         </div>
         <div>
-          <h1 className="text-2xl font-bold text-foreground">
+          <h1 className="text-xl sm:text-2xl font-bold text-foreground">
             Добро пожаловать, {currentUser?.name?.split(' ')[0] ?? 'Пользователь'}!
           </h1>
           <p className="text-sm text-muted-foreground mt-0.5">
@@ -94,12 +94,12 @@ export default function Dashboard() {
       </div>
 
       {/* Stats grid */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 xs:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4">
         {stats.map(stat => (
           <Link
             key={stat.label}
             to={stat.to}
-            className="bg-card border border-border/70 rounded-xl p-5 flex items-center gap-4 shadow-sm hover:border-primary/40 hover:shadow-md transition-all group"
+            className="bg-card border border-border/70 rounded-xl p-4 sm:p-5 flex items-center gap-3 sm:gap-4 shadow-sm hover:border-primary/40 hover:shadow-md transition-all group"
           >
             <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${stat.color}`}>
               <stat.icon className="w-5 h-5" />
@@ -112,7 +112,7 @@ export default function Dashboard() {
         ))}
       </div>
 
-      <div className="grid grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
         {/* Recent projects */}
         <div className="bg-card border border-border/70 rounded-xl shadow-sm overflow-hidden">
           <div className="px-5 py-4 border-b border-border/50 flex items-center justify-between">

@@ -40,11 +40,11 @@ export function KanbanBoard({ tasks, users, project, onTaskClick, onCreateClick,
   return (
     <div className="space-y-4">
       {canCreateTask(project) && (
-        <div className="flex justify-end gap-2">
-          <Button variant="outline" onClick={onVoiceCreateClick} className="gap-2 shadow-sm">
+        <div className="flex flex-col xs:flex-row xs:justify-end gap-2">
+          <Button variant="outline" onClick={onVoiceCreateClick} className="gap-2 shadow-sm w-full xs:w-auto">
             Голосовая задача
           </Button>
-          <Button onClick={onCreateClick} className="gap-2 shadow-sm">
+          <Button onClick={onCreateClick} className="gap-2 shadow-sm w-full xs:w-auto">
             <Plus className="w-4 h-4" />
             Создать задачу
           </Button>
@@ -52,7 +52,7 @@ export function KanbanBoard({ tasks, users, project, onTaskClick, onCreateClick,
       )}
 
       <DragDropContext onDragEnd={onDragEnd}>
-        <div className="flex gap-4 h-[calc(100vh-17rem)] overflow-x-auto pb-2">
+        <div className="flex gap-3 sm:gap-4 min-h-[60vh] md:h-[calc(100vh-17rem)] overflow-x-auto pb-2">
           {COLUMNS.map(col => {
             const columnTasks = tasks.filter(t => t.status === col.id);
             return (
@@ -61,7 +61,7 @@ export function KanbanBoard({ tasks, users, project, onTaskClick, onCreateClick,
                   <div
                     ref={provided.innerRef}
                     {...provided.droppableProps}
-                    className={`flex-1 min-w-[270px] max-w-[320px] rounded-xl flex flex-col transition-colors ${
+                    className={`flex-1 min-w-[82vw] xs:min-w-[300px] md:min-w-[270px] max-w-[92vw] xs:max-w-[320px] rounded-xl flex flex-col transition-colors ${
                       snapshot.isDraggingOver
                         ? 'bg-primary/5 ring-2 ring-primary/20'
                         : 'bg-muted/40'

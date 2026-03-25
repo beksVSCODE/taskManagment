@@ -146,9 +146,9 @@ export default function Departments() {
     }
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-5 sm:space-y-6">
             {/* Header */}
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
                         <Building2 className="w-5 h-5 text-primary" />
@@ -159,7 +159,7 @@ export default function Departments() {
                     </div>
                 </div>
                 {canManageDepartments && (
-                    <Button size="sm" className="gap-1.5" onClick={() => setShowCreate(true)}>
+                    <Button size="sm" className="gap-1.5 w-full sm:w-auto" onClick={() => setShowCreate(true)}>
                         <Plus className="w-4 h-4" />Создать отдел
                     </Button>
                 )}
@@ -173,7 +173,7 @@ export default function Departments() {
                         : 'Отделов пока нет.'}
                 </div>
             ) : (
-                <div className="grid grid-cols-2 gap-5">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-5">
                     {departments.map((dept, i) => {
                         const dotColor     = PALETTE[i % PALETTE.length];
                         const deptUsers    = users.filter(u => u.departmentId === dept.id);
@@ -233,7 +233,7 @@ export default function Departments() {
                                 )}
 
                                 {/* Статистика */}
-                                <div className="grid grid-cols-3 gap-3">
+                                <div className="grid grid-cols-3 gap-2 sm:gap-3">
                                     <div className="text-center">
                                         <p className="text-xl font-bold text-foreground">{deptUsers.length}</p>
                                         <p className="text-xs text-muted-foreground">Участников</p>

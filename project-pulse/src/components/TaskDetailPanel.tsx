@@ -156,15 +156,15 @@ export function TaskDetailPanel({ task, project, open, onClose }: Props) {
 
   return (
     <Sheet open={open} onOpenChange={() => onClose()}>
-      <SheetContent className="w-[600px] sm:max-w-[600px] p-0 flex flex-col">
-        <SheetHeader className="p-6 pb-0">
+      <SheetContent className="w-full sm:max-w-[600px] p-0 flex flex-col">
+        <SheetHeader className="p-4 sm:p-6 pb-0">
           <div className="flex items-start justify-between">
             <div className="flex-1">
               <SheetTitle className="text-xl">{task.title}</SheetTitle>
               <div className="flex items-center gap-2 mt-2 flex-wrap">
                 {canChangeStatus ? (
                   <Select value={task.status} onValueChange={(v) => handleStatusChange(v as TaskStatus)}>
-                    <SelectTrigger className="w-[140px] h-7 text-xs"><SelectValue /></SelectTrigger>
+                    <SelectTrigger className="w-[130px] h-8 sm:h-7 text-xs"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       {Object.entries(statusLabels).map(([key, label]) => (
                         <SelectItem key={key} value={key}>{label}</SelectItem>
@@ -176,7 +176,7 @@ export function TaskDetailPanel({ task, project, open, onClose }: Props) {
                 )}
                 {canChangePriority ? (
                   <Select value={task.priority} onValueChange={handlePriorityChange}>
-                    <SelectTrigger className={`w-[120px] h-7 text-xs border-dashed ${priorityStyles[task.priority]}`}>
+                    <SelectTrigger className={`w-[120px] h-8 sm:h-7 text-xs border-dashed ${priorityStyles[task.priority]}`}>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -203,7 +203,7 @@ export function TaskDetailPanel({ task, project, open, onClose }: Props) {
           </div>
         </SheetHeader>
 
-        <ScrollArea className="flex-1 px-6">
+        <ScrollArea className="flex-1 px-4 sm:px-6">
           <div className="space-y-5 py-4">
             <div>
               <h4 className="text-sm font-medium mb-1">Описание</h4>
@@ -212,7 +212,7 @@ export function TaskDetailPanel({ task, project, open, onClose }: Props) {
 
             <Separator />
 
-            <div className="grid grid-cols-2 gap-3 text-sm">
+            <div className="grid grid-cols-1 xs:grid-cols-2 gap-3 text-sm">
               <div>
                 <span className="text-muted-foreground">Исполнители:</span>
                 <div className="mt-1 space-y-1">
@@ -350,7 +350,7 @@ export function TaskDetailPanel({ task, project, open, onClose }: Props) {
                     className="h-8 text-sm"
                   />
                   {subtaskErrors.title && <p className="text-xs text-destructive">{subtaskErrors.title}</p>}
-                  <div className="flex gap-2">
+                  <div className="flex flex-col xs:flex-row gap-2">
                     <Select
                       value={newSubtask.assigneeId}
                       onValueChange={v => {
@@ -388,7 +388,7 @@ export function TaskDetailPanel({ task, project, open, onClose }: Props) {
                       {subtaskErrors.dueDate && <p className="text-xs text-destructive">{subtaskErrors.dueDate}</p>}
                     </div>
                   )}
-                  <div className="flex gap-2">
+                  <div className="flex flex-col xs:flex-row gap-2">
                     <Button size="sm" className="h-7 text-xs" onClick={handleAddSubtask} disabled={!newSubtask.title.trim()}>
                       Добавить
                     </Button>

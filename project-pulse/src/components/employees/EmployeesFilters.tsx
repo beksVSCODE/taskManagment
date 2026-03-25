@@ -92,7 +92,7 @@ export function EmployeesFilters({
                 </Select>
             </div>
 
-            <div className="flex flex-wrap items-center gap-4">
+            <div className="flex flex-wrap items-center gap-3 sm:gap-4">
                 <label className="flex items-center gap-2 text-sm">
                     <Checkbox
                         checked={showWithoutTasks}
@@ -109,8 +109,8 @@ export function EmployeesFilters({
                     <span>Только с просроченными задачами</span>
                 </label>
 
-                <Button variant="outline" size="sm" onClick={onReset}>Сбросить фильтры</Button>
-                <Label className="ml-auto text-xs text-muted-foreground">Фильтры применяются мгновенно</Label>
+                <Button variant="outline" size="sm" onClick={onReset} className="w-full xs:w-auto">Сбросить фильтры</Button>
+                <Label className="w-full sm:ml-auto sm:w-auto text-xs text-muted-foreground">Фильтры применяются мгновенно</Label>
             </div>
         </div>
     );

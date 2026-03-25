@@ -67,11 +67,11 @@ export function AnalyticsView({ tasks, users }: Props) {
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Stat cards */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 xs:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
         {statCards.map(({ label, value, icon: Icon, color, bg, border }) => (
-          <div key={label} className={`bg-card rounded-xl border ${border} p-5 flex items-center gap-4 shadow-sm`}>
+          <div key={label} className={`bg-card rounded-xl border ${border} p-4 sm:p-5 flex items-center gap-3 sm:gap-4 shadow-sm`}>
             <div className={`w-11 h-11 rounded-xl ${bg} flex items-center justify-center flex-shrink-0`}>
               <Icon className={`w-5 h-5 ${color}`} />
             </div>
@@ -84,14 +84,14 @@ export function AnalyticsView({ tasks, users }: Props) {
       </div>
 
       {/* Charts */}
-      <div className="grid grid-cols-2 gap-5">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-5">
         {/* Status pie */}
         <Card className="border-border/70 shadow-sm">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-semibold">Задачи по статусам</CardTitle>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={240}>
+            <ResponsiveContainer width="100%" height={220}>
               <PieChart>
                 <Pie data={statusData} cx="50%" cy="50%" outerRadius={80} innerRadius={40} dataKey="value" paddingAngle={3}>
                   {statusData.map((_, i) => <Cell key={i} fill={STATUS_COLORS[i]} />)}
@@ -109,7 +109,7 @@ export function AnalyticsView({ tasks, users }: Props) {
             <CardTitle className="text-sm font-semibold">Задачи по приоритету</CardTitle>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={240}>
+            <ResponsiveContainer width="100%" height={220}>
               <BarChart data={priorityData} barSize={36}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(220 13% 88%)" />
                 <XAxis dataKey="name" tick={{ fontSize: 12 }} />
@@ -129,7 +129,7 @@ export function AnalyticsView({ tasks, users }: Props) {
             <CardTitle className="text-sm font-semibold">Производительность сотрудников</CardTitle>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={240}>
+            <ResponsiveContainer width="100%" height={220}>
               <BarChart data={performanceData} barSize={18}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(220 13% 88%)" />
                 <XAxis dataKey="name" tick={{ fontSize: 11 }} />
@@ -146,10 +146,10 @@ export function AnalyticsView({ tasks, users }: Props) {
         {/* Timeline line chart */}
         <Card className="border-border/70 shadow-sm">
           <CardHeader className="pb-2">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col xs:flex-row xs:items-center xs:justify-between gap-2">
               <CardTitle className="text-sm font-semibold">Динамика выполнения</CardTitle>
               <Select value={period} onValueChange={v => setPeriod(v as typeof period)}>
-                <SelectTrigger className="w-[120px] h-7 text-xs">
+                <SelectTrigger className="w-full xs:w-[120px] h-8 xs:h-7 text-xs">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -161,7 +161,7 @@ export function AnalyticsView({ tasks, users }: Props) {
             </div>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={240}>
+            <ResponsiveContainer width="100%" height={220}>
               <LineChart data={timelineData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(220 13% 88%)" />
                 <XAxis dataKey="name" tick={{ fontSize: 11 }} />

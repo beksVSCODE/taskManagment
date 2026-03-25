@@ -73,7 +73,7 @@ export function NotificationCenter() {
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[360px] p-0 shadow-lg rounded-xl" align="end">
+      <PopoverContent className="w-[calc(100vw-1rem)] max-w-[360px] p-0 shadow-lg rounded-xl" align="end">
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b">
           <div className="flex items-center gap-2">

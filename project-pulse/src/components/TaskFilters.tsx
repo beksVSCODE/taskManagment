@@ -38,7 +38,7 @@ export function TaskFilters({ filters, onChange, users }: Props) {
     <div className="space-y-2.5">
       <div className="flex items-center gap-2.5 flex-wrap">
         {/* Search */}
-        <div className="relative flex-1 min-w-[200px] max-w-xs">
+        <div className="relative w-full sm:flex-1 sm:min-w-[220px] sm:max-w-xs">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
           <Input
             placeholder="Поиск по названию и тегам..."
@@ -50,7 +50,7 @@ export function TaskFilters({ filters, onChange, users }: Props) {
 
         {/* Priority */}
         <Select value={filters.priority} onValueChange={v => update({ priority: v as Priority | 'all' })}>
-          <SelectTrigger className="w-[140px] h-9 text-sm rounded-lg">
+          <SelectTrigger className="w-full xs:w-[170px] h-9 text-sm rounded-lg">
             <SelectValue placeholder="Приоритет" />
           </SelectTrigger>
           <SelectContent>
@@ -69,7 +69,7 @@ export function TaskFilters({ filters, onChange, users }: Props) {
 
         {/* Assignee */}
         <Select value={filters.assigneeId} onValueChange={v => update({ assigneeId: v })}>
-          <SelectTrigger className="w-[180px] h-9 text-sm rounded-lg">
+          <SelectTrigger className="w-full xs:w-[210px] h-9 text-sm rounded-lg">
             <SelectValue placeholder="Исполнитель" />
           </SelectTrigger>
           <SelectContent>
@@ -80,7 +80,7 @@ export function TaskFilters({ filters, onChange, users }: Props) {
 
         {/* Sort */}
         <Select value={filters.sortBy} onValueChange={v => update({ sortBy: v as FilterState['sortBy'] })}>
-          <SelectTrigger className="w-[160px] h-9 text-sm rounded-lg">
+          <SelectTrigger className="w-full xs:w-[190px] h-9 text-sm rounded-lg">
             <SelectValue placeholder="Сортировка" />
           </SelectTrigger>
           <SelectContent>

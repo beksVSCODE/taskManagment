@@ -22,7 +22,7 @@ const Index = () => {
   return (
     <div>
       {/* Page header */}
-      <div className="flex items-center justify-between mb-7">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-5 sm:mb-7">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
             <FolderKanban className="w-5 h-5 text-primary" />
@@ -35,7 +35,7 @@ const Index = () => {
           </div>
         </div>
         {permissions.canCreateProject && (
-          <Button onClick={() => setCreateOpen(true)} className="gap-2 shadow-sm">
+          <Button onClick={() => setCreateOpen(true)} className="gap-2 shadow-sm w-full sm:w-auto">
             <Plus className="w-4 h-4" />
             Создать проект
           </Button>
@@ -43,7 +43,7 @@ const Index = () => {
       </div>
 
       {/* Projects grid */}
-      <div className="grid grid-cols-3 gap-5">
+      <div className="grid grid-cols-1 xs:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-5">
         {visibleProjects.map(project => (
           <ProjectCardWithTasks key={project.id} project={project} users={users} />
         ))}

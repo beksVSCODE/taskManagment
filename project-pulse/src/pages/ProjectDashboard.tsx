@@ -80,9 +80,9 @@ export default function ProjectDashboard() {
   const currentSelectedTask = selectedTask ? tasks.find(t => t.id === selectedTask.id) || selectedTask : null;
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4 sm:space-y-5">
       {/* Header */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-start gap-2 sm:gap-3">
         <Link to="/projects">
           <Button variant="ghost" size="icon" className="rounded-lg h-9 w-9">
             <ArrowLeft className="w-4 h-4" />
@@ -95,7 +95,7 @@ export default function ProjectDashboard() {
       </div>
 
       <Tabs defaultValue="kanban">
-        <TabsList className="bg-muted/60 p-1 rounded-lg">
+        <TabsList className="bg-muted/60 p-1 rounded-lg w-full sm:w-auto grid grid-cols-2 sm:inline-flex h-auto">
           <TabsTrigger value="kanban" className="gap-2 rounded-md text-sm data-[state=active]:bg-card data-[state=active]:shadow-sm">
             <Kanban className="w-3.5 h-3.5" />
             Kanban

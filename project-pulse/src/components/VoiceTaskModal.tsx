@@ -206,13 +206,13 @@ export function VoiceTaskModal({ open, onClose, project }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="max-w-3xl max-h-[88vh] overflow-y-auto rounded-2xl">
+      <DialogContent className="w-[calc(100vw-1rem)] sm:w-full max-w-3xl max-h-[88vh] overflow-y-auto rounded-2xl p-4 sm:p-6">
         <DialogHeader>
           <DialogTitle>Голосовая задача</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-col xs:flex-row items-stretch xs:items-center gap-2">
             {!isRecording ? (
               <Button onClick={startRecording} className="gap-2">
                 <Mic className="w-4 h-4" />
@@ -258,7 +258,7 @@ export function VoiceTaskModal({ open, onClose, project }: Props) {
                 </Alert>
               )}
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <Label>Исполнитель *</Label>
                   <Select value={assigneeId} onValueChange={setAssigneeId}>

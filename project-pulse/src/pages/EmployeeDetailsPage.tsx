@@ -185,7 +185,7 @@ export default function EmployeeDetailsPage() {
                 </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+            <div className="grid grid-cols-1 xs:grid-cols-2 xl:grid-cols-4 gap-3">
                 <StatCard title="Всего задач" value={data.statistics.totalTasks} icon={<ListTodo className="h-4 w-4" />} />
                 <StatCard title="Активные" value={data.statistics.activeTasks} icon={<Clock3 className="h-4 w-4" />} />
                 <StatCard title="Выполненные" value={data.statistics.completedTasks} icon={<CheckCircle2 className="h-4 w-4" />} />

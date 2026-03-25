@@ -144,8 +144,8 @@ export default function UsersManagement() {
     }
 
     return (
-        <div className="space-y-5">
-            <div className="flex items-center justify-between">
+        <div className="space-y-4 sm:space-y-5">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
                         <Users className="w-5 h-5 text-primary" />
@@ -155,23 +155,23 @@ export default function UsersManagement() {
                         <p className="text-sm text-muted-foreground">{users.length} пользователей</p>
                     </div>
                 </div>
-                <Button size="sm" className="gap-1.5" onClick={() => setShowCreate(true)}>
+                <Button size="sm" className="gap-1.5 w-full sm:w-auto" onClick={() => setShowCreate(true)}>
                     <Plus className="w-4 h-4" />Создать
                 </Button>
             </div>
 
             <div className="flex gap-3 flex-wrap">
                 <Input placeholder="Поиск по имени / email…" value={filterQuery}
-                    onChange={e => setFilterQuery(e.target.value)} className="h-8 w-56 text-sm" />
+                    onChange={e => setFilterQuery(e.target.value)} className="h-9 w-full sm:w-56 text-sm" />
                 <Select value={filterRole} onValueChange={setFilterRole}>
-                    <SelectTrigger className="h-8 w-40 text-sm"><SelectValue placeholder="Все роли" /></SelectTrigger>
+                    <SelectTrigger className="h-9 w-full xs:w-44 text-sm"><SelectValue placeholder="Все роли" /></SelectTrigger>
                     <SelectContent>
                         <SelectItem value="__all__">Все роли</SelectItem>
                         {ROLES.map(r => <SelectItem key={r} value={r}>{roleLabels[r]}</SelectItem>)}
                     </SelectContent>
                 </Select>
                 <Select value={filterDept} onValueChange={setFilterDept}>
-                    <SelectTrigger className="h-8 w-44 text-sm"><SelectValue placeholder="Все отделы" /></SelectTrigger>
+                    <SelectTrigger className="h-9 w-full xs:w-48 text-sm"><SelectValue placeholder="Все отделы" /></SelectTrigger>
                     <SelectContent>
                         <SelectItem value="__all__">Все отделы</SelectItem>
                         {departments.map(d => <SelectItem key={d.id} value={String(d.id)}>{d.name}</SelectItem>)}
@@ -179,7 +179,7 @@ export default function UsersManagement() {
                 </Select>
             </div>
 
-            <div className="bg-card rounded-xl border border-border/70 overflow-hidden shadow-sm">
+            <div className="bg-card rounded-xl border border-border/70 overflow-hidden shadow-sm hidden lg:block">
                 <div className="grid grid-cols-[2fr_2fr_1.5fr_1.8fr_auto] gap-4 px-5 py-3 border-b border-border/60 bg-muted/30">
                     {['Пользователь', 'Email', 'Отдел', 'Роль', ''].map((h, i) => (
                         <span key={i} className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{h}</span>
@@ -228,6 +228,52 @@ export default function UsersManagement() {
                 </div>
             </div>
 
+            <div className="lg:hidden space-y-2.5">
+                {filtered.map((user, idx) => {
+                    const cfg = roleConfig[user.role] ?? roleConfig.TEAM;
+                    const avatarColor = AVATAR_COLORS[idx % AVATAR_COLORS.length];
+                    return (
+                        <div key={user.id} className="rounded-xl border border-border/70 bg-card p-3 shadow-sm space-y-3">
+                            <div className="flex items-center gap-3 min-w-0">
+                                <div className={`w-9 h-9 rounded-full flex items-center justify-center text-[11px] font-bold text-white flex-shrink-0 ${avatarColor}`}>
+                                    {user.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                    <p className="font-medium text-sm truncate">{user.name}</p>
+                                    <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+                                    <p className="text-xs text-muted-foreground mt-0.5">{user.department || '—'}</p>
+                                </div>
+                            </div>
+
+                            <Select value={user.role} onValueChange={v => handleRoleChange(user, v as Role)}>
+                                <SelectTrigger className={`h-9 text-xs font-semibold border rounded-lg ${cfg.bg} ${cfg.color}`}>
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {ROLES.map(r => <SelectItem key={r} value={r}>{roleLabels[r]}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+
+                            <div className="flex gap-2">
+                                <Button variant="outline" size="sm" className="flex-1 h-9" onClick={() => openEdit(user)}>
+                                    <Edit2 className="w-3.5 h-3.5 mr-1.5" />
+                                    Изменить
+                                </Button>
+                                <Button variant="outline" size="sm" className="flex-1 h-9 text-destructive hover:text-destructive" onClick={() => deleteUser.mutate(user.id)}>
+                                    <Trash2 className="w-3.5 h-3.5 mr-1.5" />
+                                    Удалить
+                                </Button>
+                            </div>
+                        </div>
+                    );
+                })}
+                {filtered.length === 0 && (
+                    <div className="px-5 py-8 text-center text-sm text-muted-foreground rounded-xl border border-border/70 bg-card">
+                        Пользователи не найдены
+                    </div>
+                )}
+            </div>
+
             {/* Диалог создания */}
             <Dialog open={showCreate} onOpenChange={v => { if (!v) { setShowCreate(false); setCreateForm(emptyCreate()); setCreateErrors({}); } }}>
                 <DialogContent className="sm:max-w-[440px]">
@@ -251,7 +297,7 @@ export default function UsersManagement() {
                                 onChange={e => setCreateForm(p => ({ ...p, password: e.target.value }))} />
                             {createErrors.password && <p className="text-xs text-destructive">{createErrors.password}</p>}
                         </div>
-                        <div className="grid grid-cols-2 gap-3">
+                        <div className="grid grid-cols-1 xs:grid-cols-2 gap-3">
                             <div className="space-y-1.5">
                                 <Label>Роль</Label>
                                 <Select value={createForm.role} onValueChange={v => setCreateForm(p => ({
@@ -305,7 +351,7 @@ export default function UsersManagement() {
                                 <Input value={editUser.fullName}
                                     onChange={e => setEditUser(p => p ? { ...p, fullName: e.target.value } : null)} />
                             </div>
-                            <div className="grid grid-cols-2 gap-3">
+                            <div className="grid grid-cols-1 xs:grid-cols-2 gap-3">
                                 <div className="space-y-1.5">
                                     <Label>Роль</Label>
                                     <Select value={editUser.role} onValueChange={v => setEditUser(p => p ? {
