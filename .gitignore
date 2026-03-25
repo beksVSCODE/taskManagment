@@ -1,0 +1,10 @@
+# Secrets and local environment
+.env
+.env.*
+!.env.example
+
+# Spring local overrides
+**/application-local.properties
+
+# Local logs/artifacts
+sb_out.txt
