@@ -124,7 +124,7 @@ export function Layout() {
             <NavItem to="/employees" icon={UserRound} label="Сотрудники" />
           )}
           {canViewManagement && (
-            <NavItem to="/departments" icon={Building2} label="Отделы" />
+        <NavItem to="/departments" icon={Building2} label="Отделы" />
           )}
           {canManageUsers && (
             <NavItem to="/users" icon={Shield} label="Пользователи" />

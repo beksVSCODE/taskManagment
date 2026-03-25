@@ -50,6 +50,15 @@ public class GlobalExceptionHandler {
                 .body(Map.of("message", ex.getMessage()));
     }
 
+    @ExceptionHandler(IllegalStateException.class)
+    public ResponseEntity<Map<String, String>> handleIllegalState(IllegalStateException ex) {
+        log.error("IllegalStateException: {}", ex.getMessage(), ex);
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                .body(Map.of(
+                        "message", "ИИ сервис недоступен",
+                        "detail", ex.getMessage()));
+    }
+
     // Корректно обрабатывает ResponseStatusException из MeController и других мест
     @ExceptionHandler(ResponseStatusException.class)
     public ResponseEntity<Map<String, String>> handleResponseStatus(ResponseStatusException ex) {
@@ -64,7 +73,6 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(Map.of(
                         "message", "Внутренняя ошибка сервера",
-                        "detail", ex.getClass().getSimpleName() + ": " + ex.getMessage()
-                ));
+                        "detail", ex.getClass().getSimpleName() + ": " + ex.getMessage()));
     }
 }

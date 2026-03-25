@@ -13,10 +13,15 @@ export class ApiError extends Error {
 async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const token = localStorage.getItem('jwt_token');
 
+    const isFormData = typeof FormData !== 'undefined' && options.body instanceof FormData;
+
     const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
         ...(options.headers as Record<string, string>),
     };
+
+    if (!isFormData && !headers['Content-Type']) {
+        headers['Content-Type'] = 'application/json';
+    }
 
     if (token) {
         headers['Authorization'] = `Bearer ${token}`;
@@ -72,13 +77,22 @@ export const api = {
     get: <T>(endpoint: string) => request<T>(endpoint, { method: 'GET' }),
 
     post: <T>(endpoint: string, body?: unknown) =>
-        request<T>(endpoint, { method: 'POST', body: JSON.stringify(body) }),
+        request<T>(endpoint, {
+            method: 'POST',
+            body: body instanceof FormData ? body : JSON.stringify(body),
+        }),
 
     patch: <T>(endpoint: string, body?: unknown) =>
-        request<T>(endpoint, { method: 'PATCH', body: JSON.stringify(body) }),
+        request<T>(endpoint, {
+            method: 'PATCH',
+            body: body instanceof FormData ? body : JSON.stringify(body),
+        }),
 
     put: <T>(endpoint: string, body?: unknown) =>
-        request<T>(endpoint, { method: 'PUT', body: JSON.stringify(body) }),
+        request<T>(endpoint, {
+            method: 'PUT',
+            body: body instanceof FormData ? body : JSON.stringify(body),
+        }),
 
     delete: <T>(endpoint: string) => request<T>(endpoint, { method: 'DELETE' }),
 

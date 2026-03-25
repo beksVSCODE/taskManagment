@@ -5,6 +5,7 @@ import { userService } from '@/services/userService';
 import { notificationService } from '@/services/notificationService';
 import { departmentService } from '@/services/departmentService';
 import { employeeWorkloadService } from '@/services/employeeWorkloadService';
+import { voiceTaskService } from '@/services/voiceTaskService';
 import { Task, Role, Subtask, Project } from '@/types';
 
 export function useProjects() {
@@ -117,7 +118,7 @@ export function useDeleteTask() {
 }
 
 // Загрузка комментариев задачи через отдельный ендпоинт
-// Решает проблему с comments:[] хардкодом в mapTask
+// Решает проблему с comments:[] хардкодом в mapTask
 export function useComments(taskId: string) {
     return useQuery({
         queryKey: ['comments', taskId],
@@ -270,6 +271,31 @@ export function useDeleteSubtask() {
             qc.invalidateQueries({ queryKey: ['tasks', task.projectId] });
             qc.invalidateQueries({ queryKey: ['tasks', 'all'] });
             qc.invalidateQueries({ queryKey: ['subtasks', task.id] });
+        },
+    });
+}
+
+export function useParseVoiceTask() {
+    return useMutation({
+        mutationFn: ({ projectId, audio, transcript }: { projectId: string; audio: Blob; transcript?: string }) =>
+            voiceTaskService.parse(projectId, audio, transcript),
+    });
+}
+
+export function useConfirmVoiceTask() {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: ({
+            projectId,
+            payload,
+        }: {
+            projectId: string;
+            payload: import('@/types').VoiceTaskConfirmPayload;
+        }) => voiceTaskService.confirm(projectId, payload),
+        onSuccess: (task) => {
+            qc.invalidateQueries({ queryKey: ['tasks', task.projectId] });
+            qc.invalidateQueries({ queryKey: ['tasks', 'all'] });
+            qc.invalidateQueries({ queryKey: ['notifications'] });
         },
     });
 }
