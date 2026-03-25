@@ -4,6 +4,7 @@ import { useProject, useTasks, useUsers } from '@/hooks/useData';
 import { KanbanBoard } from '@/components/KanbanBoard';
 import { TaskDetailPanel } from '@/components/TaskDetailPanel';
 import { CreateTaskModal } from '@/components/CreateTaskModal';
+import { VoiceTaskModal } from '@/components/VoiceTaskModal';
 import { TaskFilters, FilterState, defaultFilters } from '@/components/TaskFilters';
 import { AnalyticsView } from '@/components/AnalyticsView';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -19,6 +20,7 @@ export default function ProjectDashboard() {
   const { data: users = [] } = useUsers();
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
+  const [voiceOpen, setVoiceOpen] = useState(false);
   const [filters, setFilters] = useState<FilterState>(defaultFilters);
   const taskIdFromQuery = searchParams.get('taskId');
 
@@ -106,7 +108,14 @@ export default function ProjectDashboard() {
 
         <TabsContent value="kanban" className="space-y-4 mt-4">
           <TaskFilters filters={filters} onChange={setFilters} users={users} />
-          <KanbanBoard tasks={filteredTasks} users={users} project={project} onTaskClick={openTask} onCreateClick={() => setCreateOpen(true)} />
+          <KanbanBoard
+            tasks={filteredTasks}
+            users={users}
+            project={project}
+            onTaskClick={openTask}
+            onCreateClick={() => setCreateOpen(true)}
+            onVoiceCreateClick={() => setVoiceOpen(true)}
+          />
         </TabsContent>
 
         <TabsContent value="analytics" className="mt-4">
@@ -116,6 +125,7 @@ export default function ProjectDashboard() {
 
       <TaskDetailPanel task={currentSelectedTask} project={project} open={!!selectedTask} onClose={closeTask} />
       <CreateTaskModal open={createOpen} onClose={() => setCreateOpen(false)} project={project} />
+      <VoiceTaskModal open={voiceOpen} onClose={() => setVoiceOpen(false)} project={project} />
     </div>
   );
 }

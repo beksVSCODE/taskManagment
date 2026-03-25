@@ -217,3 +217,33 @@ export interface EmployeeWorkloadDetails {
     tasks: EmployeeTask[];
 }
 
+export interface VoiceAssigneeCandidate {
+    id: string;
+    fullName: string;
+    score: number;
+}
+
+export interface VoiceTaskDraft {
+    transcript: string;
+    assigneeRaw?: string;
+    assigneeId?: string;
+    title: string;
+    description?: string;
+    dueDate?: string;
+    priority?: Priority;
+    confidence: number;
+    warnings: string[];
+    missingFields: string[];
+    assigneeCandidates: VoiceAssigneeCandidate[];
+}
+
+export interface VoiceTaskConfirmPayload {
+    title: string;
+    description?: string;
+    dueDate: string;
+    assigneeId: string;
+    priority?: Priority;
+    transcript?: string;
+    confidence?: number;
+}
+

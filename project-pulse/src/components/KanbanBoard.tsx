@@ -19,9 +19,10 @@ interface Props {
   project: Project;
   onTaskClick: (task: Task) => void;
   onCreateClick: () => void;
+  onVoiceCreateClick: () => void;
 }
 
-export function KanbanBoard({ tasks, users, project, onTaskClick, onCreateClick }: Props) {
+export function KanbanBoard({ tasks, users, project, onTaskClick, onCreateClick, onVoiceCreateClick }: Props) {
   const updateTask = useUpdateTask();
   const { canDragTask, canCreateTask } = usePermissions();
 
@@ -39,7 +40,10 @@ export function KanbanBoard({ tasks, users, project, onTaskClick, onCreateClick 
   return (
     <div className="space-y-4">
       {canCreateTask(project) && (
-        <div className="flex justify-end">
+        <div className="flex justify-end gap-2">
+          <Button variant="outline" onClick={onVoiceCreateClick} className="gap-2 shadow-sm">
+            Голосовая задача
+          </Button>
           <Button onClick={onCreateClick} className="gap-2 shadow-sm">
             <Plus className="w-4 h-4" />
             Создать задачу
