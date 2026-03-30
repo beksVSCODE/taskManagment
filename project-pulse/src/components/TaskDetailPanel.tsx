@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useToast } from '@/hooks/use-toast';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -50,6 +51,7 @@ export function TaskDetailPanel({ task, project, open, onClose }: Props) {
   const updateSubtask = useUpdateSubtask();
   const deleteSubtask = useDeleteSubtask();
   const permissions = usePermissions();
+  const { toast } = useToast();
 
   if (!task) return null;
 
@@ -87,9 +89,21 @@ export function TaskDetailPanel({ task, project, open, onClose }: Props) {
 
   const handleAddComment = () => {
     if (!commentText.trim()) return;
-    addComment.mutate({ taskId: task.id, authorId: currentUser.id, text: commentText });
+    const text = commentText;
     setCommentText('');
     setShowMentions(false);
+    addComment.mutate(
+      { taskId: task.id, authorId: currentUser.id, text },
+      {
+        onError: () => {
+          toast({
+            title: 'Не удалось отправить комментарий',
+            description: 'Попробуйте ещё раз',
+            variant: 'destructive',
+          });
+        },
+      }
+    );
   };
 
   const handleSubtaskToggle = (subtaskId: string) => {
@@ -426,7 +440,7 @@ export function TaskDetailPanel({ task, project, open, onClose }: Props) {
                   variant="ghost"
                   className="absolute bottom-2 right-2 h-7 w-7"
                   onClick={handleAddComment}
-                  disabled={!commentText.trim()}
+                  disabled={!commentText.trim() || addComment.isPending}
                 >
                   <Send className="w-4 h-4" />
                 </Button>

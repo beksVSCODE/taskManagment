@@ -5,12 +5,17 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
 @Entity
 @Table(name = "projects")
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class Project {
 
     @Id
@@ -40,6 +45,9 @@ public class Project {
     @JsonIgnore
     @OneToMany(mappedBy = "project", cascade = CascadeType.ALL)
     private List<ProjectMember> members;
+
+    @Column(name = "deadline")
+    private LocalDate deadline;
 
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

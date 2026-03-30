@@ -176,7 +176,8 @@ export const taskService = {
         return data.map(mapComment);
     },
 
-    addComment: async (taskId: string, _authorId: string, text: string): Promise<void> => {
-        await api.post(`/tasks/${taskId}/comments`, { content: text });
+    addComment: async (taskId: string, _authorId: string, text: string): Promise<Comment> => {
+        const data = await api.post<Record<string, unknown>>(`/tasks/${taskId}/comments`, { content: text });
+        return mapComment(data);
     },
 };

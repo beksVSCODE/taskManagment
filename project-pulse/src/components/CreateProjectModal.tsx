@@ -18,6 +18,7 @@ export function CreateProjectModal({ open, onClose }: Props) {
   const [description, setDescription] = useState('');
   const [pmId, setPmId]               = useState('');
   const [deptId, setDeptId]           = useState('');
+  const [deadline, setDeadline]       = useState('');
   const [errors, setErrors]           = useState<Record<string, string>>({});
 
   const { currentUser }            = useAuth();
@@ -58,7 +59,7 @@ export function CreateProjectModal({ open, onClose }: Props) {
   };
 
   const reset = () => {
-    setName(''); setDescription(''); setPmId(''); setDeptId(''); setErrors({});
+    setName(''); setDescription(''); setPmId(''); setDeptId(''); setDeadline(''); setErrors({});
   };
 
   // Сбрасываем PM при смене отдела
@@ -78,6 +79,7 @@ export function CreateProjectModal({ open, onClose }: Props) {
         // PM назначает себя сам (backend игнорирует pmId для роли PM)
         pmId: isPm ? (currentUser?.id ?? '') : pmId,
         teamMemberIds: [],
+        deadline: deadline || undefined,
       },
       {
         onSuccess: () => { reset(); onClose(); },
@@ -185,6 +187,18 @@ export function CreateProjectModal({ open, onClose }: Props) {
               </div>
             </div>
           )}
+
+          {/* Дедлайн */}
+          <div className="space-y-1.5">
+            <Label htmlFor="proj-deadline">Дедлайн проекта</Label>
+            <Input
+              id="proj-deadline"
+              type="date"
+              value={deadline}
+              onChange={e => setDeadline(e.target.value)}
+              className="w-full"
+            />
+          </div>
         </div>
 
         <DialogFooter className="flex-col items-stretch gap-2">

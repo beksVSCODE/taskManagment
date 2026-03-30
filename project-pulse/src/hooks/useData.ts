@@ -6,7 +6,7 @@ import { notificationService } from '@/services/notificationService';
 import { departmentService } from '@/services/departmentService';
 import { employeeWorkloadService } from '@/services/employeeWorkloadService';
 import { voiceTaskService } from '@/services/voiceTaskService';
-import { Task, Role, Subtask, Project } from '@/types';
+import { Task, Role, Subtask, Project, Comment } from '@/types';
 
 export function useProjects() {
     return useQuery({ queryKey: ['projects'], queryFn: projectService.getAll });
@@ -170,9 +170,37 @@ export function useAddComment() {
     return useMutation({
         mutationFn: ({ taskId, authorId, text }: { taskId: string; authorId: string; text: string }) =>
             taskService.addComment(taskId, authorId, text),
-        // variables содержит taskId — инвалидируем только комментарии этой задачи
-        onSuccess: (_, variables) => {
-            qc.invalidateQueries({ queryKey: ['comments', variables.taskId] });
+        onMutate: async ({ taskId, authorId, text }) => {
+            // Отменяем текущие запросы на получение комментариев, чтобы не затереть оптимистичное обновление
+            await qc.cancelQueries({ queryKey: ['comments', taskId] });
+            // Сохраняем снимок текущего состояния для возможного отката
+            const previousComments = qc.getQueryData<Comment[]>(['comments', taskId]);
+            // Добавляем оптимистичный комментарий с временным ID
+            const optimisticComment: Comment = {
+                id: `temp-${Date.now()}`,
+                taskId,
+                authorId,
+                text,
+                createdAt: new Date().toISOString(),
+                attachments: [],
+            };
+            qc.setQueryData<Comment[]>(['comments', taskId], (old) => [
+                ...(old ?? []),
+                optimisticComment,
+            ]);
+            return { previousComments, taskId };
+        },
+        onError: (_err, _vars, context) => {
+            // Откатываем оптимистичное обновление при ошибке сервера
+            if (context) {
+                qc.setQueryData(['comments', context.taskId], context.previousComments);
+            }
+        },
+        onSuccess: (newComment, variables) => {
+            // Заменяем временный комментарий реальным из ответа сервера (без лишнего GET-запроса)
+            qc.setQueryData<Comment[]>(['comments', variables.taskId], (old) =>
+                (old ?? []).map((c) => (c.id.startsWith('temp-') ? newComment : c))
+            );
             qc.invalidateQueries({ queryKey: ['notifications'] });
         },
     });
@@ -240,6 +268,16 @@ export function useMarkAllNotificationsRead() {
         mutationFn: () => notificationService.markAllRead(),
         onSuccess: () => {
             qc.invalidateQueries({ queryKey: ['notifications'] });
+        },
+    });
+}
+
+export function useDeleteProject() {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: (id: string) => projectService.delete(id),
+        onSuccess: () => {
+            qc.invalidateQueries({ queryKey: ['projects'] });
         },
     });
 }

@@ -3,6 +3,7 @@ package com.example.demo.services;
 import com.example.demo.dto.request.ProjectRequest;
 import com.example.demo.dto.response.ProjectResponse;
 import com.example.demo.entity.*;
+import com.example.demo.enums.EntityType;
 import com.example.demo.enums.Role;
 import com.example.demo.exception.AccessDeniedException;
 import com.example.demo.exception.ResourceNotFoundException;
@@ -24,6 +25,9 @@ public class ProjectService {
     private final UserRepository userRepository;
     private final DepartmentRepository departmentRepository;
     private final TaskRepository taskRepository;
+    private final NotificationRepository notificationRepository;
+    private final TaskHistoryRepository taskHistoryRepository;
+    private final AttachmentRepository attachmentRepository;
 
     public Project create(ProjectRequest request, String email) {
         User currentUser = userRepository.findByEmail(email)
@@ -70,6 +74,7 @@ public class ProjectService {
                 .description(request.getDescription())
                 .pm(pm)
                 .department(department)
+                .deadline(request.getDeadline())
                 .build();
 
         return projectRepository.save(project);
@@ -162,6 +167,12 @@ public class ProjectService {
             project.setDescription(request.getDescription());
         }
 
+        // deadline: null означает «очистить», поэтому обновляем всегда если поле
+        // присутствует в запросе
+        if (request.getDeadline() != null || (request.getName() != null)) {
+            project.setDeadline(request.getDeadline());
+        }
+
         // ADMIN может менять департамент вручную
         if (currentUser.getRole() == Role.ADMIN) {
             if (request.getDepartmentId() != null) {
@@ -204,6 +215,29 @@ public class ProjectService {
     }
 
     public void delete(Long id) {
+        // Шаг 1: загружаем все задачи проекта
+        List<Task> tasks = taskRepository.findByProjectId(id);
+
+        for (Task task : tasks) {
+            Long taskId = task.getId();
+            // Шаг 2: удаляем уведомления, ссылающиеся на задачу (нет FK CASCADE)
+            notificationRepository.deleteAll(notificationRepository.findByTaskId(taskId));
+            // Шаг 3: удаляем историю задачи (нет FK CASCADE)
+            taskHistoryRepository.deleteAll(
+                    taskHistoryRepository.findByTaskIdOrderByChangedAtAsc(taskId));
+            // Шаг 4: удаляем вложения задачи (entityType+entityId, нет FK)
+            attachmentRepository.deleteByEntityTypeAndEntityId(EntityType.TASK, taskId);
+        }
+
+        // Шаг 5: удаляем задачи — Hibernate каскадно удалит
+        // TaskAssignee (CascadeType.ALL + orphanRemoval)
+        // Subtask (CascadeType.ALL)
+        // Comment → CommentMention (CascadeType.ALL)
+        // записи в join-таблице task_tags_relation (владелец @ManyToMany)
+        taskRepository.deleteAll(tasks);
+
+        // Шаг 6: удаляем проект — Hibernate каскадно удалит ProjectMember
+        // (CascadeType.ALL)
         projectRepository.deleteById(id);
     }
 
@@ -253,6 +287,7 @@ public class ProjectService {
         }
 
         r.setTaskCount((int) taskRepository.countByProjectId(p.getId()));
+        r.setDeadline(p.getDeadline());
         return r;
     }
 }

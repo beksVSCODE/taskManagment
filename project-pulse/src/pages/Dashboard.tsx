@@ -112,7 +112,7 @@ export default function Dashboard() {
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+      <div className="grid grid-cols-1 gap-4 sm:gap-6">
         {/* Recent projects */}
         <div className="bg-card border border-border/70 rounded-xl shadow-sm overflow-hidden">
           <div className="px-5 py-4 border-b border-border/50 flex items-center justify-between">
@@ -135,27 +135,6 @@ export default function Dashboard() {
                   <p className="text-xs text-muted-foreground truncate">{project.department}</p>
                 </div>
               </Link>
-            ))}
-          </div>
-        </div>
-
-        {/* Recent notifications */}
-        <div className="bg-card border border-border/70 rounded-xl shadow-sm overflow-hidden">
-          <div className="px-5 py-4 border-b border-border/50 flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-foreground">Новые уведомления</h2>
-            <Link to="/notifications" className="text-xs text-primary hover:underline">Все</Link>
-          </div>
-          <div className="divide-y divide-border/40">
-            {recentNotifications.length === 0 && (
-              <p className="text-sm text-muted-foreground px-5 py-4">Нет новых уведомлений</p>
-            )}
-            {recentNotifications.map(n => (
-              <div key={n.id} className="px-5 py-3">
-                <p className="text-sm text-foreground line-clamp-2">{n.message}</p>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  {new Date(n.createdAt).toLocaleDateString('ru', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
-                </p>
-              </div>
             ))}
           </div>
         </div>

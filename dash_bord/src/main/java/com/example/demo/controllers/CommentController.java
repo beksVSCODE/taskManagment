@@ -7,6 +7,7 @@ import com.example.demo.services.CommentService;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -37,9 +38,8 @@ public class CommentController {
             @PathVariable Long taskId,
             @Valid @RequestBody CommentRequest request,
             @AuthenticationPrincipal UserDetails userDetails) {
-        return ResponseEntity.ok(
-                commentService.addComment(taskId, request, userDetails.getUsername())
-        );
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(commentService.addComment(taskId, request, userDetails.getUsername()));
     }
 
     @PatchMapping("/api/comments/{commentId}")
@@ -49,8 +49,7 @@ public class CommentController {
             @Valid @RequestBody CommentUpdateRequest request,
             @AuthenticationPrincipal UserDetails userDetails) {
         return ResponseEntity.ok(
-                commentService.updateComment(commentId, request, userDetails.getUsername())
-        );
+                commentService.updateComment(commentId, request, userDetails.getUsername()));
     }
 
     @DeleteMapping("/api/comments/{commentId}")

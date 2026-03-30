@@ -7,6 +7,7 @@ import com.example.demo.exception.AccessDeniedException;
 import com.example.demo.exception.ResourceNotFoundException;
 import com.example.demo.repositories.NotificationRepository;
 import lombok.RequiredArgsConstructor;
+import org.hibernate.Hibernate;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -32,6 +33,17 @@ public class NotificationService {
                 .isRead(false)
                 .build();
         notificationRepository.save(notification);
+
+        // Принудительно загружаем lazy-прокси пока сессия принадлежит HTTP-потоку.
+        // Без этого @Async-поток пытается обратиться к той же Hibernate-сессии
+        // одновременно с HTTP-потоком → IllegalStateException (Illegal pop()).
+        if (user != null)
+            Hibernate.initialize(user);
+        if (task != null) {
+            Hibernate.initialize(task);
+            if (task.getProject() != null)
+                Hibernate.initialize(task.getProject());
+        }
 
         // Внешний канал: Telegram (не должен ломать основной поток)
         telegramNotificationService.send(user, type, message, task);

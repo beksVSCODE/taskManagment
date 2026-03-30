@@ -136,32 +136,6 @@ export function Layout() {
         <SectionLabel>Система</SectionLabel>
         <NavItem to="/settings" icon={Settings} label="Настройки" onClick={mobile ? closeMobileMenu : undefined} />
 
-        {/* ── Мои проекты ── */}
-        {myProjects.length > 0 && (
-          <>
-            <div className="mt-2 mb-0.5">
-              <button
-                onClick={() => setProjectsOpen(v => !v)}
-                className="w-full flex items-center gap-2 px-3 py-1.5 rounded-lg text-[10px] font-semibold text-sidebar-foreground/40 uppercase tracking-widest hover:text-sidebar-foreground/70 transition-colors"
-              >
-                {projectsOpen
-                  ? <ChevronDown className="w-3 h-3" />
-                  : <ChevronRight className="w-3 h-3" />
-                }
-                Мои проекты
-                <span className="ml-auto text-[10px] font-bold opacity-60">{myProjects.length}</span>
-              </button>
-            </div>
-
-            {projectsOpen && (
-              <div className="space-y-0.5 pl-1">
-                {myProjects.map(project => (
-                  <ProjectNavItem key={project.id} project={project} onClick={mobile ? closeMobileMenu : undefined} />
-                ))}
-              </div>
-            )}
-          </>
-        )}
       </nav>
 
       {/* User info + logout */}
@@ -234,7 +208,6 @@ export function Layout() {
             <span className="hidden lg:inline text-muted-foreground">·</span>
             <span className="hidden lg:inline text-xs text-muted-foreground truncate">{currentUser?.department}</span>
           </div>
-          <NotificationCenter />
         </header>
         <main className="flex-1 overflow-auto bg-background p-3 sm:p-4 lg:p-6">
           <Outlet />

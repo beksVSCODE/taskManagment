@@ -1,6 +1,8 @@
 import { useState, useMemo, useEffect } from 'react';
-import { useParams, Link, useSearchParams } from 'react-router-dom';
-import { useProject, useTasks, useUsers } from '@/hooks/useData';
+import { useParams, Link, useSearchParams, useNavigate } from 'react-router-dom';
+import { useProject, useTasks, useUsers, useUpdateProject, useDeleteProject } from '@/hooks/useData';
+import { usePermissions } from '@/hooks/usePermissions';
+import { useToast } from '@/hooks/use-toast';
 import { KanbanBoard } from '@/components/KanbanBoard';
 import { TaskDetailPanel } from '@/components/TaskDetailPanel';
 import { CreateTaskModal } from '@/components/CreateTaskModal';
@@ -8,21 +10,45 @@ import { VoiceTaskModal } from '@/components/VoiceTaskModal';
 import { TaskFilters, FilterState, defaultFilters } from '@/components/TaskFilters';
 import { AnalyticsView } from '@/components/AnalyticsView';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Input } from '@/components/ui/input';
 import { Task, Priority } from '@/types';
-import { ArrowLeft, Kanban, BarChart3 } from 'lucide-react';
+import { ArrowLeft, Kanban, BarChart3, Calendar, Pencil, Check, X, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 export default function ProjectDashboard() {
   const { id } = useParams<{ id: string }>();
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const { data: project } = useProject(id!);
   const { data: tasks = [] } = useTasks(id!);
   const { data: users = [] } = useUsers();
+  const updateProject = useUpdateProject();
+  const deleteProject = useDeleteProject();
+  const permissions = usePermissions();
+  const { toast } = useToast();
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [voiceOpen, setVoiceOpen] = useState(false);
   const [filters, setFilters] = useState<FilterState>(defaultFilters);
+  const [editingDeadline, setEditingDeadline] = useState(false);
+  const [deadlineValue, setDeadlineValue] = useState('');
   const taskIdFromQuery = searchParams.get('taskId');
+
+  const handleDeleteProject = () => {
+    if (!confirm(
+      `Удалить проект «${project?.name}»?\n\nБудут удалены все задачи, комментарии, вложения и история. Это действие нельзя отменить.`
+    )) return;
+    deleteProject.mutate(id!, {
+      onSuccess: () => {
+        toast({ title: 'Проект удалён', description: 'Все данные удалены.' });
+        navigate('/projects');
+      },
+      onError: (err: unknown) => {
+        const msg = err instanceof Error ? err.message : 'Ошибка удаления';
+        toast({ title: 'Не удалось удалить проект', description: msg, variant: 'destructive' });
+      },
+    });
+  };
 
   useEffect(() => {
     if (!taskIdFromQuery) return;
@@ -91,7 +117,80 @@ export default function ProjectDashboard() {
         <div className="flex-1 min-w-0">
           <h1 className="text-xl font-bold truncate">{project.name}</h1>
           <p className="text-sm text-muted-foreground truncate">{project.description}</p>
+          {/* Deadline */}
+          <div className="flex items-center gap-2 mt-1">
+            {!editingDeadline ? (
+              <>
+                {project.deadline ? (
+                  <span className={`flex items-center gap-1 text-xs ${
+                    new Date(project.deadline) < new Date() ? 'text-destructive font-medium' : 'text-muted-foreground'
+                  }`}>
+                    <Calendar className="w-3 h-3" />
+                    Дедлайн: {new Date(project.deadline).toLocaleDateString('ru', { day: '2-digit', month: 'short', year: 'numeric' })}
+                    {new Date(project.deadline) < new Date() && <span className="text-[10px]">(просрочен)</span>}
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-1 text-xs text-muted-foreground/60">
+                    <Calendar className="w-3 h-3" />
+                    Дедлайн не задан
+                  </span>
+                )}
+                <button
+                  className="text-muted-foreground/40 hover:text-muted-foreground transition-colors"
+                  onClick={() => { setDeadlineValue(project.deadline ?? ''); setEditingDeadline(true); }}
+                  title="Изменить дедлайн"
+                >
+                  <Pencil className="w-3 h-3" />
+                </button>
+              </>
+            ) : (
+              <div className="flex items-center gap-1.5">
+                <Input
+                  type="date"
+                  value={deadlineValue}
+                  onChange={e => setDeadlineValue(e.target.value)}
+                  className="h-7 text-xs w-40"
+                  autoFocus
+                />
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="h-7 w-7"
+                  disabled={updateProject.isPending}
+                  onClick={() => {
+                    updateProject.mutate(
+                      { id: project.id, updates: { deadline: deadlineValue || undefined } },
+                      { onSuccess: () => setEditingDeadline(false) }
+                    );
+                  }}
+                >
+                  <Check className="w-3.5 h-3.5 text-emerald-500" />
+                </Button>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="h-7 w-7"
+                  onClick={() => setEditingDeadline(false)}
+                >
+                  <X className="w-3.5 h-3.5 text-destructive" />
+                </Button>
+              </div>
+            )}
+          </div>
         </div>
+        {/* Кнопка удаления проекта */}
+        {permissions.canDeleteProject && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="rounded-lg h-9 w-9 text-destructive/60 hover:text-destructive hover:bg-destructive/10 shrink-0"
+            title="Удалить проект"
+            disabled={deleteProject.isPending}
+            onClick={handleDeleteProject}
+          >
+            <Trash2 className="w-4 h-4" />
+          </Button>
+        )}
       </div>
 
       <Tabs defaultValue="kanban">

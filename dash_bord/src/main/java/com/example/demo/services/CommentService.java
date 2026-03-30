@@ -57,11 +57,11 @@ public class CommentService {
 
     // =========================================================
     // 2. Добавление комментария
-    //    После добавления уведомляем:
-    //    — создателя задачи
-    //    — всех исполнителей
-    //    — упомянутых пользователей (@mention)
-    //    Кроме автора комментария
+    // После добавления уведомляем:
+    // — создателя задачи
+    // — всех исполнителей
+    // — упомянутых пользователей (@mention)
+    // Кроме автора комментария
     // =========================================================
     public CommentResponse addComment(Long taskId, CommentRequest request, String authorEmail) {
         if (request.getContent() == null || request.getContent().isBlank()) {
@@ -86,7 +86,11 @@ public class CommentService {
         String commentMsg = author.getFullName() + " оставил комментарий к задаче: \""
                 + task.getTitle() + "\"";
 
-        notificationService.notifyTaskParticipants(task, "NEW_COMMENT", commentMsg, author);
+        try {
+            notificationService.notifyTaskParticipants(task, "NEW_COMMENT", commentMsg, author);
+        } catch (RuntimeException ignored) {
+            // Не блокируем сохранение комментария при сбое уведомления
+        }
 
         // === УВЕДОМЛЕНИЕ: Упоминание (@mention) ===
         // Упомянутые получают отдельное уведомление (даже если уже получили выше)
@@ -136,11 +140,12 @@ public class CommentService {
 
     // =========================================================
     // 5. Сохранение mention + уведомление
-    //    Упомянутые пользователи получают уведомление "MENTION"
-    //    Автор комментария не получает уведомление о своём же упоминании
+    // Упомянутые пользователи получают уведомление "MENTION"
+    // Автор комментария не получает уведомление о своём же упоминании
     // =========================================================
     private void saveMentions(Comment comment, List<Long> mentionUserIds, User author) {
-        if (mentionUserIds == null || mentionUserIds.isEmpty()) return;
+        if (mentionUserIds == null || mentionUserIds.isEmpty())
+            return;
 
         for (Long userId : mentionUserIds) {
             User mentionedUser = userRepository.findById(userId)
@@ -161,8 +166,7 @@ public class CommentService {
                         "MENTION",
                         author.getFullName() + " упомянул вас в комментарии к задаче: \""
                                 + comment.getTask().getTitle() + "\"",
-                        comment.getTask()
-                );
+                        comment.getTask());
             }
         }
     }
@@ -173,7 +177,8 @@ public class CommentService {
     private void validateTaskAccess(User user, Task task, String action) {
         Role role = user.getRole();
 
-        if (role == Role.ADMIN) return;
+        if (role == Role.ADMIN)
+            return;
 
         if (role == Role.MANAGER) {
             if (task.getProject() == null ||
@@ -248,14 +253,12 @@ public class CommentService {
         r.setMentionUserIds(
                 mentions.stream()
                         .map(m -> m.getMentionedUser().getId())
-                        .toList()
-        );
+                        .toList());
 
         r.setMentionUserNames(
                 mentions.stream()
                         .map(m -> m.getMentionedUser().getFullName())
-                        .toList()
-        );
+                        .toList());
 
         return r;
     }

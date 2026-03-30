@@ -496,13 +496,7 @@ public class TaskService {
             throw new IllegalArgumentException(
                     "Недопустимый переход статуса: " + oldStatus + " → " + newStatus
                             + ". Допустимые переходы: NEW→IN_PROGRESS, IN_PROGRESS→NEW/REVIEW,"
-                            + " REVIEW→IN_PROGRESS/DONE, DONE→REVIEW (привилегированные роли).");
-        }
-
-        // 2. Переоткрытие DONE — только ADMIN / MANAGER / PM
-        if (TaskStatusTransition.requiresPrivilege(oldStatus) && user.getRole() == Role.TEAM) {
-            throw new AccessDeniedException(
-                    "Только ADMIN, MANAGER или PM могут переоткрыть завершённую задачу");
+                            + " REVIEW→IN_PROGRESS/DONE, DONE→REVIEW/IN_PROGRESS.");
         }
 
         String oldStatusStr = oldStatus != null ? oldStatus.name() : null;

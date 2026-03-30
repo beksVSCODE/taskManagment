@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { Project, Task, User } from '@/types';
-import { AlertTriangle, CheckCircle2, ListTodo, Clock, ArrowRight, Users } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, ListTodo, Clock, ArrowRight, Users, Calendar } from 'lucide-react';
 
 const DEPT_COLORS: Record<string, { gradient: string; badge: string }> = {
   Development: { gradient: 'from-blue-500 to-indigo-600', badge: 'bg-blue-50 text-blue-700 border border-blue-200' },
@@ -88,6 +88,18 @@ export function ProjectCard({ project, tasks, users }: Props) {
             <span>{teamMembers.length}</span>
           </div>
         </div>
+
+        {/* Deadline */}
+        {project.deadline && (() => {
+          const isOverdue = new Date(project.deadline) < new Date();
+          return (
+            <div className={`flex items-center gap-1.5 text-xs mb-4 ${isOverdue ? 'text-destructive font-medium' : 'text-muted-foreground'}`}>
+              <Calendar className="w-3.5 h-3.5 flex-shrink-0" />
+              <span>Дедлайн: {new Date(project.deadline).toLocaleDateString('ru', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
+              {isOverdue && <span className="text-[10px]">(просрочен)</span>}
+            </div>
+          );
+        })()}
 
         {/* Progress */}
         <div className="mb-4">

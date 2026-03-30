@@ -20,6 +20,7 @@ export function usePermissions() {
         // ── Projects ─────────────────────────────────────────
         // 2. Create Projects: ADMIN, MANAGER, PM
         canCreateProject: roleName === 'ADMIN' || roleName === 'MANAGER' || roleName === 'PM',
+        canDeleteProject: roleName === 'ADMIN' || roleName === 'MANAGER' || roleName === 'PM',
         canAssignPM: roleName === 'ADMIN' || roleName === 'MANAGER',
 
         // 1. View Projects (filter happens server-side)
@@ -52,13 +53,12 @@ export function usePermissions() {
             return false;
         },
 
-        // 6. Change Task Status: ADMIN, PM, TEAM (назначенные задачи, кроме выхода из DONE)
+        // 6. Change Task Status: ADMIN, MANAGER, PM, TEAM (для TEAM — назначенные задачи)
         canChangeStatus: (task: Task, project?: Project) => {
             if (roleName === 'ADMIN') return true;
             if (roleName === 'MANAGER') return true;
             if (roleName === 'PM') return project?.pmId === uid;
             if (roleName === 'TEAM') {
-                if (task.status === 'DONE') return false; // TEAM не может переоткрыть задачу
                 return task.assigneeIds?.includes(uid) ?? false;
             }
             return false;
@@ -75,13 +75,12 @@ export function usePermissions() {
         },
 
         // 6. Drag on Kanban = change status
-        // TEAM не может двигать задачи из DONE (переоткрытие запрещено на frontend и backend)
+        // Для TEAM — только назначенные задачи
         canDragTask: (task: Task, project?: Project) => {
             if (roleName === 'ADMIN') return true;
             if (roleName === 'MANAGER') return true;    // видит только свои задачи отдела
             if (roleName === 'PM') return project?.pmId === uid;
             if (roleName === 'TEAM') {
-                if (task.status === 'DONE') return false; // TEAM не может переоткрыть задачу
                 return task.assigneeIds?.includes(uid) ?? false;
             }
             return false;

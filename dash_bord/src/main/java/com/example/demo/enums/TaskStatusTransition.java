@@ -12,7 +12,7 @@ import java.util.Set;
  *   NEW         → IN_PROGRESS
  *   IN_PROGRESS → NEW, REVIEW
  *   REVIEW      → IN_PROGRESS, DONE
- *   DONE        → REVIEW  (только привилегированные роли: ADMIN, MANAGER, PM)
+ *   DONE        → REVIEW, IN_PROGRESS
  * </pre>
  *
  * Зеркальное определение находится на frontend:
@@ -28,7 +28,7 @@ public final class TaskStatusTransition {
         map.put(TaskStatus.NEW, EnumSet.of(TaskStatus.IN_PROGRESS));
         map.put(TaskStatus.IN_PROGRESS, EnumSet.of(TaskStatus.NEW, TaskStatus.REVIEW));
         map.put(TaskStatus.REVIEW, EnumSet.of(TaskStatus.IN_PROGRESS, TaskStatus.DONE));
-        map.put(TaskStatus.DONE, EnumSet.of(TaskStatus.REVIEW)); // reopening only
+        map.put(TaskStatus.DONE, EnumSet.of(TaskStatus.REVIEW, TaskStatus.IN_PROGRESS));
         ALLOWED = Map.copyOf(map);
     }
 
@@ -45,10 +45,9 @@ public final class TaskStatusTransition {
     /**
      * Возвращает true, если переход ИЗ данного статуса требует привилегированной
      * роли.
-     * TEAM не может переоткрыть задачу из DONE.
      */
     public static boolean requiresPrivilege(TaskStatus from) {
-        return from == TaskStatus.DONE;
+        return false;
     }
 
     private TaskStatusTransition() {

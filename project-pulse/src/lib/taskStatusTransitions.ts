@@ -9,13 +9,13 @@ import { TaskStatus } from '@/types';
  *   NEW         → IN_PROGRESS
  *   IN_PROGRESS → NEW, REVIEW
  *   REVIEW      → IN_PROGRESS, DONE
- *   DONE        → REVIEW  (только ADMIN / MANAGER / PM)
+ *   DONE        → REVIEW, IN_PROGRESS
  */
 export const ALLOWED_TRANSITIONS: Record<TaskStatus, TaskStatus[]> = {
     NEW: ['IN_PROGRESS'],
     IN_PROGRESS: ['NEW', 'REVIEW'],
     REVIEW: ['IN_PROGRESS', 'DONE'],
-    DONE: ['REVIEW'],  // reopening — privileged roles only
+    DONE: ['REVIEW', 'IN_PROGRESS'],
 };
 
 /**
@@ -29,8 +29,7 @@ export function isTransitionAllowed(from: TaskStatus, to: TaskStatus): boolean {
 
 /**
  * Возвращает true, если переход ИЗ данного статуса требует привилегированной роли.
- * TEAM не может двигать задачи из DONE (переоткрытие).
  */
 export function requiresPrivilege(from: TaskStatus): boolean {
-    return from === 'DONE';
+    return false;
 }

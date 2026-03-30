@@ -15,6 +15,7 @@ function mapProject(p: Record<string, unknown>): Project {
         memberNames: p.memberNames as string[] | undefined,
         status: p.status as string | undefined,
         taskCount: p.taskCount as number | undefined,
+        deadline: p.deadline as string | undefined,
     };
 }
 
@@ -40,6 +41,7 @@ export const projectService = {
             departmentId: data.departmentId,
             pmId: data.pmId ? Number(data.pmId) : undefined,
             memberIds: data.teamMemberIds.map(Number),
+            deadline: data.deadline ?? null,
         };
         const result = await api.post<Record<string, unknown>>('/projects', body);
         return mapProject(result);
@@ -52,6 +54,7 @@ export const projectService = {
         if (updates.departmentId !== undefined) body.departmentId = updates.departmentId;
         if (updates.pmId !== undefined) body.pmId = Number(updates.pmId);
         if (updates.teamMemberIds !== undefined) body.memberIds = updates.teamMemberIds.map(Number);
+        if ('deadline' in updates) body.deadline = updates.deadline ?? null;
         const result = await api.patch<Record<string, unknown>>(`/projects/${id}`, body);
         return mapProject(result);
     },

@@ -43,6 +43,7 @@ export interface Project {
     memberNames?: string[];
     status?: string;
     taskCount?: number;
+    deadline?: string;    // ISO date string (YYYY-MM-DD)
 }
 
 // ─── Подзадача (из SubtaskResponse) ─────────────────────────────────────────

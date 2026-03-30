@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.Map;
 
 @Slf4j
 @Service
@@ -25,6 +26,14 @@ public class TelegramNotificationService {
     private String frontendBaseUrl;
 
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("dd.MM.yyyy");
+
+    /** Маппинг enum-имён статусов на русские метки для Telegram-уведомлений. */
+    private static final Map<String, String> STATUS_RU = Map.of(
+            "NEW",         "Новая",
+            "IN_PROGRESS", "В работе",
+            "REVIEW",      "На проверке",
+            "DONE",        "Выполнена"
+    );
 
     @Async
     public void send(User user, String type, String message, Task task) {
@@ -69,7 +78,7 @@ public class TelegramNotificationService {
             sb.append("\u041f\u0440\u0438\u0432\u0435\u0442, ").append(esc(firstName)).append("! \ud83d\udc4b\n\n");
         }
         if (message != null && !message.isBlank()) {
-            sb.append(esc(message)).append("\n");
+            sb.append(esc(translateStatusesInMessage(message))).append("\n");
         }
         if (task != null && task.getId() != null) {
             sb.append("\n");
@@ -95,13 +104,6 @@ public class TelegramNotificationService {
                 if (overdue)
                     sb.append(" _(\u043f\u0440\u043e\u0441\u0440\u043e\u0447\u0435\u043d\u043e)_");
                 sb.append("\n");
-            }
-            if (frontendBaseUrl != null && !frontendBaseUrl.isBlank()) {
-                String projectId = task.getProject() != null && task.getProject().getId() != null
-                        ? String.valueOf(task.getProject().getId())
-                        : "";
-                String link = frontendBaseUrl + "/project/" + projectId + "?taskId=" + task.getId();
-                sb.append("\n\ud83d\udd17 ").append(link);
             }
         }
         sb.append(
@@ -148,12 +150,18 @@ public class TelegramNotificationService {
     }
 
     private String statusLabel(TaskStatus status) {
-        return switch (status) {
-            case NEW -> "\ud83c\udd95 \u041d\u043e\u0432\u0430\u044f";
-            case IN_PROGRESS -> "\u2699\ufe0f \u0412 \u0440\u0430\u0431\u043e\u0442\u0435";
-            case REVIEW -> "\ud83d\udc40 \u041d\u0430 \u043f\u0440\u043e\u0432\u0435\u0440\u043a\u0435";
-            case DONE -> "\u2705 \u0412\u044b\u043f\u043e\u043b\u043d\u0435\u043d\u0430";
-        };
+        if (status == null) return "\u2014";
+        return STATUS_RU.getOrDefault(status.name(), status.name());
+    }
+
+    /** Заменяет английские имена статусов в тексте сообщения на русские метки из STATUS\_RU. */
+    private static String translateStatusesInMessage(String msg) {
+        if (msg == null) return null;
+        String result = msg;
+        for (Map.Entry<String, String> e : STATUS_RU.entrySet()) {
+            result = result.replace(e.getKey(), e.getValue());
+        }
+        return result;
     }
 
     private String priorityLabel(Priority priority) {

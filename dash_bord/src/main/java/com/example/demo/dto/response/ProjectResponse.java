@@ -2,6 +2,7 @@ package com.example.demo.dto.response;
 
 import lombok.Data;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @Data
@@ -21,4 +22,5 @@ public class ProjectResponse {
     private List<String> memberNames;
 
     private int taskCount;
+    private LocalDate deadline;
 }
