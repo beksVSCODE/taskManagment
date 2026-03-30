@@ -103,3 +103,26 @@ export const api = {
         return request<T>(endpoint, { method: 'POST', headers, body: formData });
     },
 };
+
+// Telegram notification API
+export const telegramApi = {
+    getStatus: () =>
+        api.get<{
+            linked: boolean;
+            enabled: boolean;
+            chatId?: string;
+        }>('/telegram/status'),
+
+    requestLink: () =>
+        api.post<{
+            deepLink: string;
+            expiresAt: string;
+            botUsername: string;
+        }>('/telegram/link/request'),
+
+    setEnabled: (enabled: boolean) =>
+        api.patch(`/telegram/enabled?enabled=${enabled}`),
+
+    unlink: () =>
+        api.delete('/telegram/link'),
+};

@@ -9,7 +9,11 @@ import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "users")
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class User {
 
     @Id
@@ -35,6 +39,12 @@ public class User {
 
     @Column(nullable = false)
     private boolean isActive = true;
+
+    @Column(name = "telegram_chat_id", length = 64)
+    private String telegramChatId;
+
+    @Column(name = "telegram_notifications_enabled", nullable = false)
+    private boolean telegramNotificationsEnabled = false;
 
     @Column(updatable = false)
     private LocalDateTime createdAt;

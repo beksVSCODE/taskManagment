@@ -8,6 +8,7 @@ import com.example.demo.enums.EntityType;
 import com.example.demo.enums.Priority;
 import com.example.demo.enums.Role;
 import com.example.demo.enums.TaskStatus;
+import com.example.demo.enums.TaskStatusTransition;
 import com.example.demo.exception.AccessDeniedException;
 import com.example.demo.exception.ResourceNotFoundException;
 import com.example.demo.repositories.*;
@@ -213,8 +214,16 @@ public class TaskService {
         User user = getUser(email);
         Task task = findTask(taskId);
 
-        // TEAM может менять только статус — используем отдельное действие для валидации
-        String action = (user.getRole() == Role.TEAM) ? "STATUS_CHANGE" : "EDIT";
+        boolean statusOnlyUpdate = request.getStatus() != null
+                && request.getTitle() == null
+                && request.getDescription() == null
+                && request.getPriority() == null
+                && request.getStartDate() == null
+                && request.getDueDate() == null
+                && (request.getAssigneeIds() == null || request.getAssigneeIds().isEmpty());
+
+        // Отдельно различаем смену статуса в Kanban и полное редактирование задачи
+        String action = statusOnlyUpdate ? "STATUS_CHANGE" : "EDIT";
         validateTaskAccess(user, task, action);
 
         // Если TEAM — разрешаем только изменение статуса, всё остальное игнорируем
@@ -222,20 +231,7 @@ public class TaskService {
             if (request.getStatus() == null) {
                 throw new AccessDeniedException("Роль TEAM может изменять только статус задачи");
             }
-            // Выполняем только смену статуса
-            if (request.getStatus() != task.getStatus()) {
-                String oldStatus = task.getStatus() != null ? task.getStatus().name() : null;
-                String newStatus = request.getStatus().name();
-                recordHistory(task, user, "status", oldStatus, newStatus);
-                task.setStatus(request.getStatus());
-                if (request.getStatus() == TaskStatus.DONE) {
-                    task.setCompletedAt(java.time.LocalDateTime.now());
-                    task.setOverdue(false);
-                }
-                String msg = "Статус задачи \"" + task.getTitle() + "\" изменён: "
-                        + oldStatus + " → " + newStatus;
-                notificationService.notifyTaskParticipants(task, "STATUS_CHANGED", msg, user);
-            }
+            applyStatusChange(task, request.getStatus(), user);
             return toResponse(taskRepository.save(task));
         }
 
@@ -281,29 +277,10 @@ public class TaskService {
         }
 
         // --- Статус ---
+        // TEAM уже вышел выше; здесь только ADMIN / MANAGER / PM (проверены
+        // validateTaskAccess).
         if (request.getStatus() != null) {
-            if (user.getRole() == Role.ADMIN || user.getRole() == Role.PM
-                    || user.getRole() == Role.MANAGER || user.getRole() == Role.TEAM) {
-                if (request.getStatus() != task.getStatus()) {
-                    String oldStatus = task.getStatus() != null ? task.getStatus().name() : null;
-                    String newStatus = request.getStatus().name();
-
-                    recordHistory(task, user, "status", oldStatus, newStatus);
-                    task.setStatus(request.getStatus());
-
-                    if (request.getStatus() == TaskStatus.DONE) {
-                        task.setCompletedAt(java.time.LocalDateTime.now());
-                        task.setOverdue(false);
-                    }
-
-                    // === Уведомление: Изменился статус ===
-                    String msg = "Статус задачи \"" + task.getTitle() + "\" изменён: "
-                            + oldStatus + " → " + newStatus;
-                    notificationService.notifyTaskParticipants(task, "STATUS_CHANGED", msg, user);
-                }
-            } else {
-                throw new AccessDeniedException("Менять статус задачи может только ADMIN, PM, MANAGER или TEAM");
-            }
+            applyStatusChange(task, request.getStatus(), user);
         }
 
         // --- Исполнители ---
@@ -505,6 +482,49 @@ public class TaskService {
                 .orElseThrow(() -> new ResourceNotFoundException("Задача не найдена"));
     }
 
+    // =========================================================
+    // Смена статуса: единая точка с валидацией перехода
+    // Используется и из TEAM-ветки, и из общей ветки updateTask.
+    // =========================================================
+    private void applyStatusChange(Task task, TaskStatus newStatus, User user) {
+        TaskStatus oldStatus = task.getStatus();
+        if (oldStatus == newStatus)
+            return;
+
+        // 1. Валидация матрицы переходов
+        if (!TaskStatusTransition.isAllowed(oldStatus, newStatus)) {
+            throw new IllegalArgumentException(
+                    "Недопустимый переход статуса: " + oldStatus + " → " + newStatus
+                            + ". Допустимые переходы: NEW→IN_PROGRESS, IN_PROGRESS→NEW/REVIEW,"
+                            + " REVIEW→IN_PROGRESS/DONE, DONE→REVIEW (привилегированные роли).");
+        }
+
+        // 2. Переоткрытие DONE — только ADMIN / MANAGER / PM
+        if (TaskStatusTransition.requiresPrivilege(oldStatus) && user.getRole() == Role.TEAM) {
+            throw new AccessDeniedException(
+                    "Только ADMIN, MANAGER или PM могут переоткрыть завершённую задачу");
+        }
+
+        String oldStatusStr = oldStatus != null ? oldStatus.name() : null;
+        recordHistory(task, user, "status", oldStatusStr, newStatus.name());
+        task.setStatus(newStatus);
+
+        if (newStatus == TaskStatus.DONE) {
+            // Завершение задачи
+            task.setCompletedAt(java.time.LocalDateTime.now());
+            task.setOverdue(false);
+        } else if (oldStatus == TaskStatus.DONE) {
+            // Возврат из DONE: сбрасываем дату завершения, пересчитываем overdue
+            task.setCompletedAt(null);
+            task.setOverdue(
+                    task.getDueDate() != null && task.getDueDate().isBefore(LocalDate.now()));
+        }
+
+        String msg = "Статус задачи \"" + task.getTitle() + "\" изменён: "
+                + oldStatusStr + " → " + newStatus.name();
+        notificationService.notifyTaskParticipants(task, "STATUS_CHANGED", msg, user);
+    }
+
     private TaskResponse toResponse(Task task) {
         TaskResponse r = new TaskResponse();
         r.setId(task.getId());
@@ -532,15 +552,19 @@ public class TaskService {
             r.setCreatorName(task.getCreator().getFullName());
         }
 
-        if (task.getAssignees() != null) {
+        if (task.getAssignees() != null && !task.getAssignees().isEmpty()) {
             r.setAssigneeIds(task.getAssignees().stream()
+                    .filter(a -> a != null && a.getUser() != null)
                     .map(a -> a.getUser().getId()).toList());
             r.setAssigneeNames(task.getAssignees().stream()
+                    .filter(a -> a != null && a.getUser() != null)
                     .map(a -> a.getUser().getFullName()).toList());
         }
 
         if (task.getTags() != null && !task.getTags().isEmpty()) {
-            r.setTagNames(task.getTags().stream().map(Tag::getName).toList());
+            r.setTagNames(task.getTags().stream()
+                    .filter(t -> t != null)
+                    .map(Tag::getName).toList());
         }
 
         if (task.getSubtasks() != null) {

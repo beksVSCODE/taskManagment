@@ -26,7 +26,7 @@ export function AnalyticsView({ tasks, users }: Props) {
   const statusData = [
     { name: 'Новые',      value: tasks.filter(t => t.status === 'NEW').length },
     { name: 'В работе',   value: inProgressCount },
-    { name: 'На проверке',value: tasks.filter(t => t.status === 'ON_REVIEW').length },
+    { name: 'На проверке',value: tasks.filter(t => t.status === 'REVIEW').length },
     { name: 'Завершено',  value: doneCount },
   ];
 

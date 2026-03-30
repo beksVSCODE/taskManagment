@@ -7,6 +7,7 @@ import com.example.demo.services.TaskService;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -15,6 +16,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/tasks")
 @SecurityRequirement(name = "bearerAuth")
@@ -69,8 +71,15 @@ public class TaskController {
             @PathVariable Long taskId,
             @RequestBody TaskUpdateRequest request,
             @AuthenticationPrincipal UserDetails userDetails) {
-        return ResponseEntity.ok(
-                taskService.updateTask(taskId, request, userDetails.getUsername()));
+        try {
+            log.info("Update task {} with status={} by user {}", taskId, request.getStatus(),
+                    userDetails.getUsername());
+            return ResponseEntity.ok(
+                    taskService.updateTask(taskId, request, userDetails.getUsername()));
+        } catch (Exception e) {
+            log.error("Error updating task {} : {}", taskId, e.getMessage(), e);
+            throw e;
+        }
     }
 
     // Удалить задачу

@@ -23,7 +23,7 @@ interface Props {
   onClose: () => void;
 }
 
-const statusLabels: Record<TaskStatus, string> = { NEW: 'Новые', IN_PROGRESS: 'В работе', ON_REVIEW: 'На проверке', DONE: 'Завершено' };
+const statusLabels: Record<TaskStatus, string> = { NEW: 'Новые', IN_PROGRESS: 'В работе', REVIEW: 'На проверке', DONE: 'Завершено' };
 const priorityLabels: Record<string, string> = { LOW: 'Низкий', MEDIUM: 'Средний', HIGH: 'Высокий', URGENT: 'Срочный' };
 const priorityStyles: Record<string, string> = { LOW: 'text-priority-low', MEDIUM: 'text-priority-medium', HIGH: 'text-priority-high', URGENT: 'text-destructive font-medium' };
 

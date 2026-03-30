@@ -1,6 +1,15 @@
 import { Task, TaskStatus, Subtask, Comment } from '@/types';
 import { api } from './apiClient';
 
+function normalizeTaskStatus(status: unknown): TaskStatus {
+    const value = typeof status === 'string' ? status.toUpperCase() : 'NEW';
+    if (value === 'ON_REVIEW') return 'REVIEW';
+    if (value === 'REVIEW') return 'REVIEW';
+    if (value === 'IN_PROGRESS') return 'IN_PROGRESS';
+    if (value === 'DONE') return 'DONE';
+    return 'NEW';
+}
+
 // Маппер TaskResponse → Task
 function mapTask(t: Record<string, unknown>): Task {
     return {
@@ -9,7 +18,7 @@ function mapTask(t: Record<string, unknown>): Task {
         projectName: t.projectName as string | undefined,
         title: t.title as string,
         description: (t.description as string) || '',
-        status: t.status as TaskStatus,
+        status: normalizeTaskStatus(t.status),
         priority: t.priority as Task['priority'],
         creatorId: t.creatorId ? String(t.creatorId) : '',
         creatorName: t.creatorName as string | undefined,
@@ -112,7 +121,7 @@ export const taskService = {
         if (updates.title !== undefined) body.title = updates.title;
         if (updates.description !== undefined) body.description = updates.description;
         if (updates.priority !== undefined) body.priority = updates.priority;
-        if (updates.status !== undefined) body.status = updates.status;
+        if (updates.status !== undefined) body.status = updates.status === 'REVIEW' ? 'REVIEW' : updates.status;
         if (updates.startDate !== undefined) body.startDate = updates.startDate;
         if (updates.dueDate !== undefined) body.dueDate = updates.dueDate;
         if (updates.assigneeIds !== undefined) body.assigneeIds = updates.assigneeIds.map(Number);

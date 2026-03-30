@@ -2,7 +2,7 @@
 export type Role = 'ADMIN' | 'MANAGER' | 'PM' | 'TEAM';
 
 // Статусы задач (backend enum TaskStatus)
-export type TaskStatus = 'NEW' | 'IN_PROGRESS' | 'ON_REVIEW' | 'DONE';
+export type TaskStatus = 'NEW' | 'IN_PROGRESS' | 'REVIEW' | 'DONE';
 
 // Приоритеты (backend enum Priority)
 export type Priority = 'LOW' | 'MEDIUM' | 'HIGH';

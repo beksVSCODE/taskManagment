@@ -1,5 +1,6 @@
 import { useAuth } from '@/contexts/AuthContext';
 import { Settings, User, Bell, Palette, Shield, Info } from 'lucide-react';
+import { TelegramSettings } from '@/components/TelegramSettings';
 
 const roleLabels: Record<string, string> = {
   ADMIN: 'Администратор', MANAGER: 'Руководитель', PM: 'ПМ', TEAM: 'Команда',
@@ -96,6 +97,11 @@ export default function SettingsPage() {
       <div className="flex items-center gap-2 text-xs text-muted-foreground/60 px-1">
         <Info className="w-3.5 h-3.5" />
         <span>TaskFlow Dashboard v2.0 · Изменение настроек будет доступно в следующих версиях</span>
+      </div>
+
+      {/* Telegram Settings */}
+      <div className="mt-8 pt-6 border-t border-border/50">
+        <TelegramSettings />
       </div>
     </div>
   );

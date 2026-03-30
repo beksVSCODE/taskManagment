@@ -18,6 +18,7 @@ import java.util.List;
 public class NotificationService {
 
     private final NotificationRepository notificationRepository;
+    private final TelegramNotificationService telegramNotificationService;
 
     // =========================================================
     // Отправить уведомление одному пользователю
@@ -31,6 +32,9 @@ public class NotificationService {
                 .isRead(false)
                 .build();
         notificationRepository.save(notification);
+
+        // Внешний канал: Telegram (не должен ломать основной поток)
+        telegramNotificationService.send(user, type, message, task);
     }
 
     // =========================================================

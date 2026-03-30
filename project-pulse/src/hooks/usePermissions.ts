@@ -3,103 +3,110 @@ import { Task, Project } from '@/types';
 
 export function usePermissions() {
     const { currentUser } = useAuth();
-    const role = currentUser?.role ?? 'TEAM';
-    const roleName = (currentUser?.role as unknown as string) ?? 'TEAM';
+    const rawRole = ((currentUser?.role as unknown as string) ?? 'TEAM').toUpperCase();
+    const roleName = rawRole.startsWith('ROLE_') ? rawRole.slice(5) : rawRole;
     const uid = currentUser?.id ?? '';
 
     return {
         // ── 15. Manage Users ──────────────────────────────────
         // ADMIN only
-        canManageUsers: role === 'ADMIN',
+        canManageUsers: roleName === 'ADMIN',
 
         // ── 16. Manage Departments ────────────────────────────
         // ADMIN only
-        canManageDepartments: role === 'ADMIN',
-        canViewManagement: role === 'ADMIN' || role === 'MANAGER', // sidebar "Отделы"
+        canManageDepartments: roleName === 'ADMIN',
+        canViewManagement: roleName === 'ADMIN' || roleName === 'MANAGER', // sidebar "Отделы"
 
         // ── Projects ─────────────────────────────────────────
         // 2. Create Projects: ADMIN, MANAGER, PM
-        canCreateProject: role === 'ADMIN' || role === 'MANAGER' || role === 'PM',
-        canAssignPM: role === 'ADMIN' || role === 'MANAGER',
+        canCreateProject: roleName === 'ADMIN' || roleName === 'MANAGER' || roleName === 'PM',
+        canAssignPM: roleName === 'ADMIN' || roleName === 'MANAGER',
 
         // 1. View Projects (filter happens server-side)
         canViewProject: (_project: Project) => {
-            return role === 'ADMIN' || role === 'MANAGER' || role === 'PM' || role === 'TEAM';
+            return roleName === 'ADMIN' || roleName === 'MANAGER' || roleName === 'PM' || roleName === 'TEAM';
         },
 
         // ── Tasks ─────────────────────────────────────────────
         // 3. Create Tasks: ADMIN, MANAGER, PM (own projects)
         canCreateTask: (_project?: Project) => {
-            if (role === 'ADMIN') return true;
-            if (role === 'MANAGER') return true;
-            if (role === 'PM' && _project?.pmId === uid) return true;
+            if (roleName === 'ADMIN') return true;
+            if (roleName === 'MANAGER') return true;
+            if (roleName === 'PM' && _project?.pmId === uid) return true;
             return false;
         },
 
         // 5. Edit Tasks: ADMIN, MANAGER (own tasks), PM
         canEditTask: (task: Task, project?: Project) => {
-            if (role === 'ADMIN') return true;
-            if (role === 'MANAGER') return true; // backend enforces "own tasks only"
-            if (role === 'PM' && project?.pmId === uid) return true;
+            if (roleName === 'ADMIN') return true;
+            if (roleName === 'MANAGER') return task.creatorId === uid; // backend: manager edits only own tasks
+            if (roleName === 'PM' && project?.pmId === uid) return true;
             return false;
         },
 
         // 5. Change Priority (part of Edit): ADMIN, MANAGER, PM
         canChangePriority: (project?: Project) => {
-            if (role === 'ADMIN') return true;
-            if (role === 'MANAGER') return true;
-            if (role === 'PM' && project?.pmId === uid) return true;
+            if (roleName === 'ADMIN') return true;
+            if (roleName === 'MANAGER') return true;
+            if (roleName === 'PM' && project?.pmId === uid) return true;
             return false;
         },
 
-        // 6. Change Task Status: ADMIN, PM, TEAM (assigned tasks only)
+        // 6. Change Task Status: ADMIN, PM, TEAM (назначенные задачи, кроме выхода из DONE)
         canChangeStatus: (task: Task, project?: Project) => {
-            if (role === 'ADMIN') return true;
-            if (role === 'PM' && project?.pmId === uid) return true;
-            if (role === 'MANAGER') return true;
-            if (role === 'TEAM') return task.assigneeIds?.includes(uid) ?? false;
+            if (roleName === 'ADMIN') return true;
+            if (roleName === 'MANAGER') return true;
+            if (roleName === 'PM') return project?.pmId === uid;
+            if (roleName === 'TEAM') {
+                if (task.status === 'DONE') return false; // TEAM не может переоткрыть задачу
+                return task.assigneeIds?.includes(uid) ?? false;
+            }
             return false;
         },
 
         // 7. Change Assignees: ADMIN, MANAGER only
         canAssignMembers: (_project?: Project) => {
-            return role === 'ADMIN' || role === 'MANAGER';
+            return roleName === 'ADMIN' || roleName === 'MANAGER';
         },
 
         // 8. Delete Tasks: ADMIN, MANAGER only
         canDeleteTask: (_task: Task, _project?: Project) => {
-            return role === 'ADMIN' || role === 'MANAGER';
+            return roleName === 'ADMIN' || roleName === 'MANAGER';
         },
 
-        // 6. Drag on Kanban = change status: ADMIN, PM, TEAM (assigned tasks only)
-        canDragTask: (task: Task) => {
-            if (role === 'ADMIN') return true;
-            if (role === 'PM') return true;
-            if (role === 'MANAGER') return true;
-            if (role === 'TEAM') return task.assigneeIds?.includes(uid) ?? false;
+        // 6. Drag on Kanban = change status
+        // TEAM не может двигать задачи из DONE (переоткрытие запрещено на frontend и backend)
+        canDragTask: (task: Task, project?: Project) => {
+            if (roleName === 'ADMIN') return true;
+            if (roleName === 'MANAGER') return true;    // видит только свои задачи отдела
+            if (roleName === 'PM') return project?.pmId === uid;
+            if (roleName === 'TEAM') {
+                if (task.status === 'DONE') return false; // TEAM не может переоткрыть задачу
+                return task.assigneeIds?.includes(uid) ?? false;
+            }
             return false;
         },
 
         // ── Subtasks ──────────────────────────────────────────
         // 9. Create Subtasks: ADMIN, MANAGER, PM
         canCreateSubtask: (project?: Project) => {
-            if (role === 'ADMIN') return true;
-            if (role === 'MANAGER') return true;
-            if (role === 'PM' && project?.pmId === uid) return true;
+            if (roleName === 'ADMIN') return true;
+            if (roleName === 'MANAGER') return true;
+            if (roleName === 'PM' && project?.pmId === uid) return true;
             return false;
         },
 
         // 10. Change Subtask Status: ADMIN, PM, назначенный исполнитель
         canChangeSubtaskStatus: (subtaskAssigneeId?: string, project?: Project) => {
-            if (role === 'ADMIN') return true;
-            if (role === 'PM' && project?.pmId === uid) return true;
-            if (role === 'TEAM' && subtaskAssigneeId === uid) return true;
+            if (roleName === 'ADMIN') return true;
+            if (roleName === 'PM' && project?.pmId === uid) return true;
+            if (roleName === 'TEAM' && subtaskAssigneeId === uid) return true;
             return false;
         },
 
         // Delete Subtask: ADMIN, MANAGER only
         canDeleteSubtask: () => {
-            return role === 'ADMIN' || role === 'MANAGER';
+            return roleName === 'ADMIN' || roleName === 'MANAGER';
         },
 
         // ── Comments ─────────────────────────────────────────
@@ -108,9 +115,9 @@ export function usePermissions() {
 
         // 12. Attach Files to Task: ADMIN, MANAGER, PM
         canAttachToTask: (project?: Project) => {
-            if (role === 'ADMIN') return true;
-            if (role === 'MANAGER') return true;
-            if (role === 'PM' && project?.pmId === uid) return true;
+            if (roleName === 'ADMIN') return true;
+            if (roleName === 'MANAGER') return true;
+            if (roleName === 'PM' && project?.pmId === uid) return true;
             return false;
         },
 
@@ -119,12 +126,12 @@ export function usePermissions() {
 
         // ── Navigation ────────────────────────────────────────
         // 14. View Analytics: ADMIN, MANAGER only
-        canViewAnalytics: role === 'ADMIN' || role === 'MANAGER',
+        canViewAnalytics: roleName === 'ADMIN' || roleName === 'MANAGER',
 
         // Employees workload: ADMIN, LEADER, PM
         // В текущем backend роль LEADER эквивалентна MANAGER
         canViewEmployeesWorkload:
-            role === 'ADMIN' || role === 'PM' || role === 'MANAGER' || roleName === 'LEADER',
+            roleName === 'ADMIN' || roleName === 'PM' || roleName === 'MANAGER' || roleName === 'LEADER',
     };
 }
 

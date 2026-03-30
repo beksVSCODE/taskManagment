@@ -99,6 +99,36 @@ export function useUpdateTask() {
     return useMutation({
         mutationFn: ({ id, updates }: { id: string; updates: Partial<Task> }) =>
             taskService.update(id, updates),
+
+        // ─── Optimistic update ───────────────────────────────────────────────
+        // Вызывается СИНХРОННО до отправки запроса.
+        // Немедленно обновляет кеш → карточка прыгает в новую колонку без ожидания сервера.
+        onMutate: async ({ id, updates }) => {
+            // Отменяем все активные рефетчи задач, чтобы они не перезатёрли наш optimistic update
+            await qc.cancelQueries({ queryKey: ['tasks'] });
+
+            // Снапшот всех задач-кешей — для отката при ошибке
+            const snapshot = qc.getQueriesData<Task[]>({ queryKey: ['tasks'] });
+
+            // Применяем изменение во всех кешах с задачами (['tasks', projectId] и ['tasks', 'all'])
+            qc.setQueriesData<Task[]>({ queryKey: ['tasks'] }, (old) =>
+                old?.map(t => (t.id === id ? { ...t, ...updates } : t))
+            );
+
+            return { snapshot };
+        },
+
+        // ─── Rollback ────────────────────────────────────────────────────────
+        // Восстанавливаем кеш из снапшота, если backend вернул ошибку
+        onError: (_err, _vars, context) => {
+            context?.snapshot.forEach(([queryKey, data]) => {
+                qc.setQueryData(queryKey, data);
+            });
+        },
+
+        // ─── Server sync ─────────────────────────────────────────────────────
+        // После успешного ответа инвалидируем кеш, чтобы получить актуальные данные
+        // (completedAt, isOverdue и др. поля, которые backend пересчитывает)
         onSuccess: (task) => {
             qc.invalidateQueries({ queryKey: ['tasks', task.projectId] });
             qc.invalidateQueries({ queryKey: ['tasks', 'all'] });
