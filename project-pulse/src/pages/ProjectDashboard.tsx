@@ -20,7 +20,7 @@ export default function ProjectDashboard() {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const { data: project } = useProject(id!);
-  const { data: tasks = [] } = useTasks(id!);
+  const { data: tasks = [], isLoading: tasksLoading } = useTasks(id!);
   const { data: users = [] } = useUsers();
   const updateProject = useUpdateProject();
   const deleteProject = useDeleteProject();
@@ -211,6 +211,7 @@ export default function ProjectDashboard() {
             tasks={filteredTasks}
             users={users}
             project={project}
+            loading={tasksLoading}
             onTaskClick={openTask}
             onCreateClick={() => setCreateOpen(true)}
             onVoiceCreateClick={() => setVoiceOpen(true)}

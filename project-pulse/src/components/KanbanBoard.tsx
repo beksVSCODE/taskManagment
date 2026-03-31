@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import { DragDropContext, Droppable, Draggable, DropResult, DragStart } from '@hello-pangea/dnd';
 import { TaskCard } from './TaskCard';
+import { MobileListView } from './MobileListView';
 import { Task, User, TaskStatus, Project } from '@/types';
 import { useUpdateTask } from '@/hooks/useData';
 import { usePermissions } from '@/hooks/usePermissions';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { isTransitionAllowed } from '@/lib/taskStatusTransitions';
 import { Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -19,15 +21,32 @@ interface Props {
   tasks: Task[];
   users: User[];
   project: Project;
+  loading?: boolean;
   onTaskClick: (task: Task) => void;
   onCreateClick: () => void;
   onVoiceCreateClick: () => void;
 }
 
-export function KanbanBoard({ tasks, users, project, onTaskClick, onCreateClick, onVoiceCreateClick }: Props) {
+export function KanbanBoard({ tasks, users, project, loading, onTaskClick, onCreateClick, onVoiceCreateClick }: Props) {
+  const isMobile = useIsMobile();
   const updateTask = useUpdateTask();
   const { canDragTask, canCreateTask } = usePermissions();
   const [draggingTask, setDraggingTask] = useState<Task | null>(null);
+
+  // On mobile — render the list view instead of the kanban board
+  if (isMobile) {
+    return (
+      <MobileListView
+        tasks={tasks}
+        users={users}
+        project={project}
+        loading={loading}
+        onTaskClick={onTaskClick}
+        onCreateClick={onCreateClick}
+        onVoiceCreateClick={onVoiceCreateClick}
+      />
+    );
+  }
 
   const onDragStart = (start: DragStart) => {
     setDraggingTask(tasks.find(t => t.id === start.draggableId) ?? null);

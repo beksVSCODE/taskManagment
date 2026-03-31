@@ -11,6 +11,7 @@ import { usePermissions } from '@/hooks/usePermissions';
 import { useProjects, useNotifications } from '@/hooks/useData';
 import { cn } from '@/lib/utils';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
+import { WalkingCat } from '@/components/WalkingCat';
 
 const roleLabels: Record<string, string> = {
   ADMIN: 'Администратор', MANAGER: 'Руководитель', LEADER: 'Руководитель', PM: 'ПМ', TEAM: 'Команда',
@@ -184,7 +185,10 @@ export function Layout() {
 
       {/* ── Main content ──────────────────────────────────────── */}
       <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
-        <header className="h-14 border-b border-border bg-card flex items-center justify-between px-3 sm:px-4 lg:px-6 flex-shrink-0 shadow-sm gap-2">
+        <header className="h-14 border-b border-border bg-card flex items-center justify-between px-3 sm:px-4 lg:px-6 flex-shrink-0 shadow-sm gap-2 relative isolate">
+          {/* ── Walking cat animation ───────────────────────────── */}
+          <WalkingCat />
+          {/* ───────────────────────────────────────────────────── */}
           <div className="flex items-center gap-2 min-w-0 text-sm">
             <button
               type="button"
