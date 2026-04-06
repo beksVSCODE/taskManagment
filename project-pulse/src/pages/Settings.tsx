@@ -1,6 +1,8 @@
 import { useAuth } from '@/contexts/AuthContext';
-import { Settings, User, Bell, Palette, Shield, Info } from 'lucide-react';
+import { Settings, User, Bell, Palette, Shield, Info, Sparkles, Check } from 'lucide-react';
 import { TelegramSettings } from '@/components/TelegramSettings';
+import { useHeaderCharacter } from '@/hooks/useHeaderCharacter';
+import { cn } from '@/lib/utils';
 
 const roleLabels: Record<string, string> = {
   ADMIN: 'Администратор', MANAGER: 'Руководитель', PM: 'ПМ', TEAM: 'Команда',
@@ -13,6 +15,7 @@ const AVATAR_COLORS = [
 
 export default function SettingsPage() {
   const { currentUser } = useAuth();
+  const { characterId, setCharacterId, characters } = useHeaderCharacter();
   const avatarColor = AVATAR_COLORS[(currentUser?.id?.charCodeAt(1) ?? 0) % AVATAR_COLORS.length];
 
   const sections = [
@@ -92,6 +95,48 @@ export default function SettingsPage() {
           </div>
         </div>
       ))}
+
+      {/* Character Selection */}
+      <div className="bg-card border border-border/70 rounded-xl shadow-sm overflow-hidden">
+        <div className="px-5 py-3.5 border-b border-border/50 flex items-center gap-2">
+          <Sparkles className="w-4 h-4 text-muted-foreground" />
+          <span className="text-sm font-semibold text-foreground">Персонаж в шапке</span>
+        </div>
+        <div className="p-5">
+          <div className="grid grid-cols-3 gap-4 mb-3">
+            {characters.map((character) => (
+              <button
+                key={character.id}
+                onClick={() => setCharacterId(character.id)}
+                className={cn(
+                  "relative flex flex-col items-center gap-2 p-3 rounded-lg border-2 transition-all hover:border-primary/50",
+                  characterId === character.id
+                    ? "border-primary bg-primary/5"
+                    : "border-border/50 bg-background/50"
+                )}
+              >
+                {characterId === character.id && (
+                  <div className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-primary rounded-full flex items-center justify-center">
+                    <Check className="w-3 h-3 text-primary-foreground" strokeWidth={3} />
+                  </div>
+                )}
+                <div className="w-20 h-20 bg-muted/30 rounded-lg flex items-center justify-center overflow-hidden">
+                  <img
+                    src={character.path}
+                    alt={character.name}
+                    className="w-full h-full object-contain"
+                  />
+                </div>
+                <span className="text-xs font-medium text-foreground">{character.name}</span>
+              </button>
+            ))}
+          </div>
+          <p className="text-xs text-muted-foreground/70 flex items-center gap-1.5">
+            <Info className="w-3.5 h-3.5" />
+            Персонаж будет ходить в шапке сайта
+          </p>
+        </div>
+      </div>
 
       {/* Info */}
       <div className="flex items-center gap-2 text-xs text-muted-foreground/60 px-1">

@@ -306,12 +306,12 @@ export function useUpdateProject() {
 export function useAddSubtask() {
     const qc = useQueryClient();
     return useMutation({
-        mutationFn: ({ taskId, subtaskData }: { taskId: string; subtaskData: Omit<Subtask, 'id'> }) =>
+        mutationFn: ({ taskId, subtaskData }: { taskId: string; projectId: string; subtaskData: Omit<Subtask, 'id'> }) =>
             taskService.addSubtask(taskId, subtaskData),
-        onSuccess: (task) => {
-            qc.invalidateQueries({ queryKey: ['tasks', task.projectId] });
+        onSuccess: (_data, { taskId, projectId }) => {
+            qc.invalidateQueries({ queryKey: ['subtasks', taskId] });
+            qc.invalidateQueries({ queryKey: ['tasks', projectId] });
             qc.invalidateQueries({ queryKey: ['tasks', 'all'] });
-            qc.invalidateQueries({ queryKey: ['subtasks', task.id] });
         },
     });
 }
@@ -319,12 +319,12 @@ export function useAddSubtask() {
 export function useUpdateSubtask() {
     const qc = useQueryClient();
     return useMutation({
-        mutationFn: ({ taskId, subtaskId, updates }: { taskId: string; subtaskId: string; updates: Partial<Subtask> }) =>
+        mutationFn: ({ taskId, subtaskId, updates }: { taskId: string; projectId: string; subtaskId: string; updates: Partial<Subtask> }) =>
             taskService.updateSubtask(taskId, subtaskId, updates),
-        onSuccess: (task) => {
-            qc.invalidateQueries({ queryKey: ['tasks', task.projectId] });
+        onSuccess: (_data, { taskId, projectId }) => {
+            qc.invalidateQueries({ queryKey: ['subtasks', taskId] });
+            qc.invalidateQueries({ queryKey: ['tasks', projectId] });
             qc.invalidateQueries({ queryKey: ['tasks', 'all'] });
-            qc.invalidateQueries({ queryKey: ['subtasks', task.id] });
             qc.invalidateQueries({ queryKey: ['notifications'] });
         },
     });
@@ -333,12 +333,12 @@ export function useUpdateSubtask() {
 export function useDeleteSubtask() {
     const qc = useQueryClient();
     return useMutation({
-        mutationFn: ({ taskId, subtaskId }: { taskId: string; subtaskId: string }) =>
+        mutationFn: ({ taskId, subtaskId }: { taskId: string; projectId: string; subtaskId: string }) =>
             taskService.deleteSubtask(taskId, subtaskId),
-        onSuccess: (task) => {
-            qc.invalidateQueries({ queryKey: ['tasks', task.projectId] });
+        onSuccess: (_data, { taskId, projectId }) => {
+            qc.invalidateQueries({ queryKey: ['subtasks', taskId] });
+            qc.invalidateQueries({ queryKey: ['tasks', projectId] });
             qc.invalidateQueries({ queryKey: ['tasks', 'all'] });
-            qc.invalidateQueries({ queryKey: ['subtasks', task.id] });
         },
     });
 }

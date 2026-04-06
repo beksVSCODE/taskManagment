@@ -1,10 +1,14 @@
+import { useHeaderCharacter } from '@/hooks/useHeaderCharacter';
+
 /**
  * Анимация идущей кошки для Header.
- * - GIF /public/Без названия.gif
+ * - GIF выбирается пользователем в настройках
  * - Горизонтальное движение: CSS @keyframes (left: -80px → calc(100% + 10px))
  * - prefers-reduced-motion: кошка скрыта
  */
 export function WalkingCat() {
+  const { currentCharacter } = useHeaderCharacter();
+
   return (
     <>
       <style>{`
@@ -31,7 +35,7 @@ export function WalkingCat() {
         }}
       >
         <img
-          src="/Без названия.gif"
+          src={currentCharacter.path}
           alt=""
           className="cat-walk-img"
           style={{

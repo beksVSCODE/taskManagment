@@ -111,37 +111,78 @@ export function TaskDetailPanel({ task, project, open, onClose }: Props) {
     if (!st) return;
     const canToggleSubtask = permissions.canChangeSubtaskStatus(st.assigneeId, project);
     if (!canToggleSubtask) return;
-    updateSubtask.mutate({
-      taskId: task.id,
-      subtaskId,
-      updates: { status: st.status === 'DONE' ? 'NEW' : 'DONE' },
-    });
+    updateSubtask.mutate(
+      {
+        taskId: task.id,
+        projectId: task.projectId,
+        subtaskId,
+        updates: { status: st.status === 'DONE' ? 'NEW' : 'DONE' },
+      },
+      {
+        onError: (err) => {
+          toast({
+            title: 'Не удалось изменить статус подзадачи',
+            description: err instanceof Error ? err.message : 'Попробуйте ещё раз',
+            variant: 'destructive',
+          });
+        },
+      }
+    );
   };
 
   const handleAddSubtask = () => {
     const errors: { title?: string; assigneeId?: string; dueDate?: string } = {};
     if (!newSubtask.title.trim()) errors.title = 'Название обязательно';
     if (!newSubtask.assigneeId) errors.assigneeId = 'Выберите исполнителя';
-    if (!newSubtask.dueDate) errors.dueDate = 'Укажите срок';
+    if (!newSubtask.dueDate) {
+      errors.dueDate = 'Укажите срок';
+    } else if (new Date(newSubtask.dueDate) < new Date(new Date().toDateString())) {
+      errors.dueDate = 'Дата не может быть в прошлом';
+    }
     setSubtaskErrors(errors);
     if (Object.keys(errors).length > 0) return;
 
-    addSubtask.mutate({
-      taskId: task.id,
-      subtaskData: {
-        title: newSubtask.title.trim(),
-        assigneeId: newSubtask.assigneeId || undefined,
-        status: 'NEW',
-        dueDate: newSubtask.dueDate || undefined,
+    addSubtask.mutate(
+      {
+        taskId: task.id,
+        projectId: task.projectId,
+        subtaskData: {
+          title: newSubtask.title.trim(),
+          assigneeId: newSubtask.assigneeId,
+          status: 'NEW',
+          dueDate: newSubtask.dueDate,
+        },
       },
-    });
-    setSubtaskErrors({});
-    setNewSubtask({ title: '', assigneeId: '', dueDate: '' });
-    setShowAddSubtask(false);
+      {
+        onSuccess: () => {
+          setSubtaskErrors({});
+          setNewSubtask({ title: '', assigneeId: '', dueDate: '' });
+          setShowAddSubtask(false);
+        },
+        onError: (err) => {
+          toast({
+            title: 'Не удалось создать подзадачу',
+            description: err instanceof Error ? err.message : 'Попробуйте ещё раз',
+            variant: 'destructive',
+          });
+        },
+      }
+    );
   };
 
   const handleDeleteSubtask = (subtaskId: string) => {
-    deleteSubtask.mutate({ taskId: task.id, subtaskId });
+    deleteSubtask.mutate(
+      { taskId: task.id, projectId: task.projectId, subtaskId },
+      {
+        onError: (err) => {
+          toast({
+            title: 'Не удалось удалить подзадачу',
+            description: err instanceof Error ? err.message : 'Попробуйте ещё раз',
+            variant: 'destructive',
+          });
+        },
+      }
+    );
   };
 
   const handleCommentInput = (value: string) => {
@@ -403,8 +444,8 @@ export function TaskDetailPanel({ task, project, open, onClose }: Props) {
                     </div>
                   )}
                   <div className="flex flex-col xs:flex-row gap-2">
-                    <Button size="sm" className="h-7 text-xs" onClick={handleAddSubtask} disabled={!newSubtask.title.trim()}>
-                      Добавить
+                    <Button size="sm" className="h-7 text-xs" onClick={handleAddSubtask} disabled={!newSubtask.title.trim() || addSubtask.isPending}>
+                      {addSubtask.isPending ? 'Добавление...' : 'Добавить'}
                     </Button>
                     <Button
                       size="sm"

@@ -135,18 +135,15 @@ export const taskService = {
 
     // ── Подзадачи ─────────────────────────────────────────────────────────────
 
-    addSubtask: async (taskId: string, subtaskData: Omit<Subtask, 'id'>, _userId?: string): Promise<Task> => {
+    addSubtask: async (taskId: string, subtaskData: Omit<Subtask, 'id'>, _userId?: string): Promise<void> => {
         await api.post(`/tasks/${taskId}/subtasks`, {
             title: subtaskData.title,
-            assigneeId: subtaskData.assigneeId ? Number(subtaskData.assigneeId) : undefined,
+            assigneeId: Number(subtaskData.assigneeId),
             dueDate: subtaskData.dueDate,
         });
-        const task = await taskService.getById(taskId);
-        if (!task) throw new Error('Task not found');
-        return task;
     },
 
-    updateSubtask: async (taskId: string, subtaskId: string, updates: Partial<Subtask>, _userId?: string): Promise<Task> => {
+    updateSubtask: async (_taskId: string, subtaskId: string, updates: Partial<Subtask>, _userId?: string): Promise<void> => {
         if (updates.status !== undefined) {
             await api.patch(`/subtasks/${subtaskId}/status`, { status: updates.status });
         } else {
@@ -156,16 +153,10 @@ export const taskService = {
             if (updates.dueDate !== undefined) body.dueDate = updates.dueDate;
             await api.patch(`/subtasks/${subtaskId}`, body);
         }
-        const task = await taskService.getById(taskId);
-        if (!task) throw new Error('Task not found');
-        return task;
     },
 
-    deleteSubtask: async (taskId: string, subtaskId: string, _userId?: string): Promise<Task> => {
+    deleteSubtask: async (_taskId: string, subtaskId: string, _userId?: string): Promise<void> => {
         await api.delete(`/subtasks/${subtaskId}`);
-        const task = await taskService.getById(taskId);
-        if (!task) throw new Error('Task not found');
-        return task;
     },
 
     // ── Комментарии ───────────────────────────────────────────────────────────

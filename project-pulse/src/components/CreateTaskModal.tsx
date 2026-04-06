@@ -7,9 +7,10 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { User, Priority, Project } from '@/types';
-import { useCreateTask, useUsers } from '@/hooks/useData';
+import { User, Priority, Project, Subtask } from '@/types';
+import { useCreateTask, useUsers, useAddSubtask } from '@/hooks/useData';
 import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { CalendarIcon, Plus, X, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -31,13 +32,16 @@ export function CreateTaskModal({ open, onClose, project }: Props) {
   const [startDate, setStartDate] = useState<Date>();
   const [tags, setTags] = useState<string[]>([]);
   const [newTag, setNewTag] = useState('');
-  const [subtasks, setSubtasks] = useState<string[]>([]);
-  const [newSubtask, setNewSubtask] = useState('');
+  const [subtasks, setSubtasks] = useState<Array<{ title: string; assigneeId: string; dueDate: string }>>([]);
+  const [newSubtask, setNewSubtask] = useState({ title: '', assigneeId: '', dueDate: '' });
+  const [subtaskErrors, setSubtaskErrors] = useState<{ title?: string; assigneeId?: string; dueDate?: string }>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const { currentUser } = useAuth();
   const { data: users = [] } = useUsers();
   const createTask = useCreateTask();
+  const addSubtask = useAddSubtask();
+  const { toast } = useToast();
 
   const teamMembers = users.filter(u =>
     u.department === project.department || u.id === project.pmId
@@ -56,16 +60,19 @@ export function CreateTaskModal({ open, onClose, project }: Props) {
   const resetForm = () => {
     setTitle(''); setDescription(''); setPriority('MEDIUM');
     setAssigneeIds([]); setDueDate(undefined); setStartDate(undefined);
-    setTags([]); setSubtasks([]); setErrors({}); setNewTag(''); setNewSubtask('');
+    setTags([]); setSubtasks([]); setErrors({}); setNewTag('');
+    setNewSubtask({ title: '', assigneeId: '', dueDate: '' });
+    setSubtaskErrors({});
   };
 
   const handleSubmit = () => {
     if (!validate()) return;
-    createTask.mutate({
+    
+    const taskData = {
       projectId: project.id,
       title: title.trim(),
       description,
-      status: 'NEW',
+      status: 'NEW' as const,
       priority,
       creatorId: currentUser?.id ?? '',
       assigneeIds,
@@ -74,14 +81,55 @@ export function CreateTaskModal({ open, onClose, project }: Props) {
       dueDate: dueDate!.toISOString().split('T')[0],
       completedAt: undefined,
       tags,
-      subtasks: subtasks.filter(s => s.trim()).map((s, i) => ({
-        id: `new-st-${i}`, title: s, status: 'NEW' as const,
-      })),
+      subtasks: [],
       comments: [],
       attachments: [],
+    };
+
+    createTask.mutate(taskData, {
+      onSuccess: async (createdTask) => {
+        // Создаём подзадачи после создания основной задачи
+        if (subtasks.length > 0) {
+          for (const st of subtasks) {
+            try {
+              await new Promise<void>((resolve, reject) => {
+                addSubtask.mutate(
+                  {
+                    taskId: createdTask.id,
+                    projectId: createdTask.projectId,
+                    subtaskData: {
+                      title: st.title,
+                      assigneeId: st.assigneeId,
+                      status: 'NEW' as const,
+                      dueDate: st.dueDate,
+                    },
+                  },
+                  {
+                    onSuccess: () => resolve(),
+                    onError: (err) => reject(err),
+                  }
+                );
+              });
+            } catch (err) {
+              toast({
+                title: 'Не удалось создать подзадачу',
+                description: `Подзадача "${st.title}" не была создана`,
+                variant: 'destructive',
+              });
+            }
+          }
+        }
+        resetForm();
+        onClose();
+      },
+      onError: (err) => {
+        toast({
+          title: 'Не удалось создать задачу',
+          description: err instanceof Error ? err.message : 'Попробуйте ещё раз',
+          variant: 'destructive',
+        });
+      },
     });
-    resetForm();
-    onClose();
   };
 
   const toggleAssignee = (id: string) => {
@@ -95,11 +143,25 @@ export function CreateTaskModal({ open, onClose, project }: Props) {
     }
   };
 
-  const addSubtask = () => {
-    if (newSubtask.trim()) {
-      setSubtasks(prev => [...prev, newSubtask.trim()]);
-      setNewSubtask('');
+  const handleAddSubtask = () => {
+    const errors: { title?: string; assigneeId?: string; dueDate?: string } = {};
+    if (!newSubtask.title.trim()) errors.title = 'Название обязательно';
+    if (!newSubtask.assigneeId) errors.assigneeId = 'Выберите исполнителя';
+    if (!newSubtask.dueDate) {
+      errors.dueDate = 'Укажите срок';
+    } else if (new Date(newSubtask.dueDate) < new Date(new Date().toDateString())) {
+      errors.dueDate = 'Дата не может быть в прошлом';
     }
+    setSubtaskErrors(errors);
+    if (Object.keys(errors).length > 0) return;
+
+    setSubtasks(prev => [...prev, { 
+      title: newSubtask.title.trim(), 
+      assigneeId: newSubtask.assigneeId,
+      dueDate: newSubtask.dueDate 
+    }]);
+    setNewSubtask({ title: '', assigneeId: '', dueDate: '' });
+    setSubtaskErrors({});
   };
 
   return (
@@ -263,26 +325,85 @@ export function CreateTaskModal({ open, onClose, project }: Props) {
           <div>
             <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Подзадачи</Label>
             <div className="space-y-1.5 mt-1.5">
-              {subtasks.map((st, i) => (
-                <div key={i} className="flex items-center gap-2 bg-muted/40 px-3 py-2 rounded-lg">
-                  <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/40 flex-shrink-0" />
-                  <span className="text-sm flex-1">{st}</span>
-                  <Button variant="ghost" size="icon" className="h-5 w-5 rounded" onClick={() => setSubtasks(prev => prev.filter((_, j) => j !== i))}>
-                    <Trash2 className="w-3 h-3 text-muted-foreground" />
-                  </Button>
-                </div>
-              ))}
+              {subtasks.map((st, i) => {
+                const assignee = users.find(u => u.id === st.assigneeId);
+                return (
+                  <div key={i} className="flex items-center gap-2 bg-muted/40 px-3 py-2 rounded-lg">
+                    <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/40 flex-shrink-0" />
+                    <span className="text-sm flex-1">{st.title}</span>
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      {assignee && (
+                        <div className="flex items-center gap-1">
+                          <div className="w-4 h-4 rounded-full bg-primary/10 flex items-center justify-center text-[8px] font-medium text-primary">
+                            {assignee.name.split(' ').map(n => n[0]).join('')}
+                          </div>
+                        </div>
+                      )}
+                      <span>{format(new Date(st.dueDate), 'dd.MM')}</span>
+                    </div>
+                    <Button variant="ghost" size="icon" className="h-5 w-5 rounded" onClick={() => setSubtasks(prev => prev.filter((_, j) => j !== i))}>
+                      <Trash2 className="w-3 h-3 text-muted-foreground" />
+                    </Button>
+                  </div>
+                );
+              })}
             </div>
-            <div className="flex gap-2 mt-2">
+            <div className="mt-2 space-y-2">
               <Input
-                value={newSubtask}
-                onChange={e => setNewSubtask(e.target.value)}
-                placeholder="Новая подзадача"
+                value={newSubtask.title}
+                onChange={e => {
+                  setNewSubtask(s => ({ ...s, title: e.target.value }));
+                  if (subtaskErrors.title) setSubtaskErrors(s => ({ ...s, title: undefined }));
+                }}
+                placeholder="Название подзадачи"
                 className="rounded-lg text-sm"
-                onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addSubtask())}
+                onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), handleAddSubtask())}
               />
-              <Button variant="outline" size="icon" onClick={addSubtask} className="rounded-lg h-9 w-9 flex-shrink-0">
-                <Plus className="w-3.5 h-3.5" />
+              {subtaskErrors.title && <p className="text-xs text-destructive">{subtaskErrors.title}</p>}
+              
+              <div className="flex gap-2">
+                <Select
+                  value={newSubtask.assigneeId}
+                  onValueChange={v => {
+                    setNewSubtask(s => ({ ...s, assigneeId: v }));
+                    if (subtaskErrors.assigneeId) setSubtaskErrors(s => ({ ...s, assigneeId: undefined }));
+                  }}
+                >
+                  <SelectTrigger className="flex-1 rounded-lg text-sm h-9">
+                    <SelectValue placeholder="Исполнитель" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {teamMembers.map(u => (
+                      <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Input
+                  type="date"
+                  className="flex-1 rounded-lg text-sm h-9"
+                  value={newSubtask.dueDate}
+                  onChange={e => {
+                    setNewSubtask(s => ({ ...s, dueDate: e.target.value }));
+                    if (subtaskErrors.dueDate) setSubtaskErrors(s => ({ ...s, dueDate: undefined }));
+                  }}
+                />
+              </div>
+              {(subtaskErrors.assigneeId || subtaskErrors.dueDate) && (
+                <div className="space-y-1">
+                  {subtaskErrors.assigneeId && <p className="text-xs text-destructive">{subtaskErrors.assigneeId}</p>}
+                  {subtaskErrors.dueDate && <p className="text-xs text-destructive">{subtaskErrors.dueDate}</p>}
+                </div>
+              )}
+              
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={handleAddSubtask} 
+                className="rounded-lg w-full h-9"
+                disabled={!newSubtask.title.trim()}
+              >
+                <Plus className="w-3.5 h-3.5 mr-1" />
+                Добавить подзадачу
               </Button>
             </div>
           </div>
