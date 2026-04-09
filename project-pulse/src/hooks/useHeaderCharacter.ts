@@ -3,9 +3,10 @@ import { useState, useEffect } from 'react';
 const STORAGE_KEY = 'header-character';
 
 export const CHARACTERS = [
-    { id: 'cat1', name: 'Котик', path: '/Без названия.gif' },
-    { id: 'cat2', name: 'Компаньон', path: '/Без названия 2.gif' },
-    { id: 'cat3', name: 'Друг', path: '/Без названия 3.gif' },
+    { id: 'cat1', name: 'Котик', path: '/Без названия.gif', height: 100, bottom: -27 },
+    { id: 'cat2', name: 'Компаньон', path: '/Без названия 2.gif', height: 100, bottom: -27 },
+    { id: 'cat3', name: 'Друг', path: '/Без названия 3.gif', height: 100, bottom: -27 },
+    { id: 'cat4', name: 'Питомец', path: '/Без названия 4.gif', height: 60, bottom: -5 },
 ] as const;
 
 export type CharacterId = typeof CHARACTERS[number]['id'];

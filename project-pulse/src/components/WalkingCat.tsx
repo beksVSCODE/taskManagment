@@ -40,8 +40,8 @@ export function WalkingCat() {
           className="cat-walk-img"
           style={{
             position: 'absolute',
-            bottom: '-27px',
-            height: '100px',
+            bottom: `${currentCharacter.bottom}px`,
+            height: `${currentCharacter.height}px`,
             width: 'auto',
           }}
         />

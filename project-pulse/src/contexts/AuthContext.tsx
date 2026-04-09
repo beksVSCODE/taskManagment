@@ -2,6 +2,8 @@ import { createContext, useContext, useState, useEffect, ReactNode } from 'react
 import { User, AuthUser, LoginRequest, JwtResponse } from '@/types';
 import { api } from '@/services/apiClient';
 import { useQueryClient } from '@tanstack/react-query';
+import { isTokenExpired } from '@/lib/jwt';
+import { useNavigate } from 'react-router-dom';
 
 interface AuthContextType {
   currentUser: User | null;
@@ -40,6 +42,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setIsLoading(false);
       return;
     }
+
+    // Проверка истечения токена
+    if (isTokenExpired(token)) {
+      localStorage.removeItem('jwt_token');
+      localStorage.removeItem('current_user');
+      setIsLoading(false);
+      return;
+    }
+
     api.get<AuthUser>('/auth/me')
       .then(me => {
         setCurrentUser(mapAuthUserToUser(me));
@@ -51,12 +62,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .finally(() => setIsLoading(false));
   }, []);
 
-  // Обработка принудительного logout (401)
+  // Обработка принудительного logout (401 или истечение токена)
   useEffect(() => {
     const handler = () => {
       setCurrentUser(null);
       setAllUsers([]);
       queryClient.clear();
+      // Редирект на login произойдёт через ProtectedRoute
     };
     window.addEventListener('auth:logout', handler);
     return () => window.removeEventListener('auth:logout', handler);

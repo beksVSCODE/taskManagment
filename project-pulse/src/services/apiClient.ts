@@ -1,4 +1,5 @@
 import { config } from '@/config';
+import { isTokenExpired } from '@/lib/jwt';
 
 export class ApiError extends Error {
     constructor(
@@ -10,7 +11,33 @@ export class ApiError extends Error {
     }
 }
 
+/**
+ * Проверка валидности токена перед запросом
+ * Если токен истёк, автоматически выходим из системы
+ */
+function checkTokenValidity(): boolean {
+    const token = localStorage.getItem('jwt_token');
+    if (!token) return false;
+
+    if (isTokenExpired(token)) {
+        // Токен истёк - очищаем и выходим
+        localStorage.removeItem('jwt_token');
+        localStorage.removeItem('current_user');
+        window.dispatchEvent(new Event('auth:logout'));
+        return false;
+    }
+
+    return true;
+}
+
 async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+    // Проверяем токен перед каждым запросом (кроме публичных endpoints)
+    if (!endpoint.includes('/auth/login') && !endpoint.includes('/auth/register')) {
+        if (!checkTokenValidity()) {
+            throw new ApiError(401, 'Сессия истекла. Пожалуйста, войдите снова.');
+        }
+    }
+
     const token = localStorage.getItem('jwt_token');
 
     const isFormData = typeof FormData !== 'undefined' && options.body instanceof FormData;

@@ -2,20 +2,22 @@
 """
 Скрипт для настройки Telegram webhook
 Использует локальный туннель через Cloudflare Tunnel или простой URL
+Генерирует секретный токен для защиты webhook от несанкционированных запросов
 """
 
 import sys
 import requests
 import json
+import secrets
 from urllib.parse import urljoin
 
 
-def setup_webhook(bot_token, webhook_url):
-    """Установить webhook для Telegram бота"""
+def setup_webhook(bot_token, webhook_url, secret_token=None):
+    """Установить webhook для Telegram бота с секретным токеном"""
 
     if not bot_token:
         print("❌ BOT_TOKEN не указан!")
-        return False
+        return False, None
 
     if not webhook_url:
         print("❌ WEBHOOK_URL не указан!")
@@ -23,30 +25,48 @@ def setup_webhook(bot_token, webhook_url):
         print("1. ngrok: https://ngrok.com/download")
         print("2. Cloudflare Tunnel")
         print("3. Или деплой на сервер с публичным IP")
-        return False
+        return False, None
 
     # Убедимся что webhook URL заканчивается правильно
     if not webhook_url.endswith('/api/telegram/webhook'):
         webhook_url = urljoin(webhook_url.rstrip('/'), '/api/telegram/webhook')
+
+    # Генерация секретного токена если не передан
+    if not secret_token:
+        secret_token = secrets.token_urlsafe(32)
+        print(f"🔐 Сгенерирован новый секретный токен")
+    else:
+        print(f"🔐 Использую существующий секретный токен")
 
     api_url = f"https://api.telegram.org/bot{bot_token}/setWebhook"
 
     print(f"🔧 Устанавливаю webhook...")
     print(f"   URL: {webhook_url}")
     print(f"   BOT: {bot_token[:15]}...")
+    print(f"   SECRET: {secret_token[:10]}...{secret_token[-10:]}")
 
     try:
-        # Установка webhook
+        # Установка webhook с секретным токеном
         response = requests.post(
-            api_url, json={"url": webhook_url}, timeout=10)
+            api_url,
+            json={
+                "url": webhook_url,
+                "secret_token": secret_token
+            },
+            timeout=10)
         result = response.json()
 
         if result.get('ok'):
             print(f"✅ Webhook успешно установлен!")
             print(f"   {result.get('description', 'OK')}")
+            print(f"\n🔑 ВАЖНО! Сохраните секретный токен в переменные окружения:")
+            print(f"   TELEGRAM_WEBHOOK_SECRET_TOKEN={secret_token}")
+            print(f"\n📝 Добавьте в application.properties:")
+            print(
+                f"   telegram.webhook.secret-token=${{TELEGRAM_WEBHOOK_SECRET_TOKEN}}")
         else:
             print(f"❌ Ошибка: {result.get('description', 'Unknown error')}")
-            return False
+            return False, None
 
         # Проверка статуса
         print(f"\n📋 Проверяю статус webhook...")
@@ -67,14 +87,14 @@ def setup_webhook(bot_token, webhook_url):
                 print(
                     f"   ⚠️ Последняя ошибка: {webhook_info.get('last_error_message')}")
 
-        return True
+        return True, secret_token
 
     except requests.exceptions.RequestException as e:
         print(f"❌ Ошибка сети: {e}")
-        return False
+        return False, None
     except json.JSONDecodeError as e:
         print(f"❌ Ошибка парсинга ответа: {e}")
-        return False
+        return False, None
 
 
 def get_local_url():
@@ -129,5 +149,18 @@ if __name__ == "__main__":
         print("  4. Запусти: python3 setup_telegram_webhook.py <TOKEN> https://abc123.ngrok.io")
         sys.exit(1)
 
-    success = setup_webhook(bot_token, webhook_url)
+    # Проверяем существующий secret token в переменных окружения
+    existing_secret = os.getenv('TELEGRAM_WEBHOOK_SECRET_TOKEN', '')
+
+    success, secret_token = setup_webhook(
+        bot_token, webhook_url, existing_secret if existing_secret else None)
+
+    if success and secret_token:
+        print("\n" + "="*60)
+        print("✅ Настройка завершена успешно!")
+        print("="*60)
+        if not existing_secret:
+            print("\n⚠️ НЕ ЗАБУДЬТЕ сохранить секретный токен!")
+            print("Без него webhook не будет работать.")
+
     sys.exit(0 if success else 1)

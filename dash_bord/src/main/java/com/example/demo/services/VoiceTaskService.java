@@ -175,9 +175,7 @@ public class VoiceTaskService {
         // Проверка доступа к проекту на уровне существующей логики
         projectService.getById(projectId, email);
 
-        if (request.getConfidence() != null && request.getConfidence() < 0.4) {
-            throw new IllegalArgumentException("Слишком низкий confidence. Подтвердите данные вручную");
-        }
+        // confidence check removed: пользователь явно подтвердил данные вручную
 
         TaskRequest taskRequest = new TaskRequest();
         taskRequest.setProjectId(projectId);

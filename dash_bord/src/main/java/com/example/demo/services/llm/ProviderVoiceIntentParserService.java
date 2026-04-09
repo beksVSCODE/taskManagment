@@ -109,6 +109,9 @@ public class ProviderVoiceIntentParserService implements VoiceIntentParserServic
         }
     }
 
+    private static final int GEMINI_MAX_RETRIES = 2;
+    private static final long GEMINI_MAX_WAIT_MS = 45_000L;
+
     private VoiceParseResult parseWithGemini(String transcript) {
         VoiceParseProperties.Provider p = properties.getGemini();
         validateProvider(p, "gemini");
@@ -155,19 +158,32 @@ public class ProviderVoiceIntentParserService implements VoiceIntentParserServic
 
             String model = resolveGeminiModel(p.getModel());
             String url = buildGeminiGenerateContentUrl(p, model);
-            log.info("[Gemini parse] sending request to model: {}", model);
-            HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(url))
-                    .header("Content-Type", "application/json")
-                    .POST(HttpRequest.BodyPublishers.ofString(objectMapper.writeValueAsString(payload),
-                            StandardCharsets.UTF_8))
-                    .build();
+            String payloadStr = objectMapper.writeValueAsString(payload);
 
-            HttpResponse<String> response = httpClient.send(request,
-                    HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
-            log.info("[Gemini parse] response status: {}, body prefix: {}",
-                    response.statusCode(),
-                    response.body().length() > 400 ? response.body().substring(0, 400) : response.body());
+            HttpResponse<String> response = null;
+            for (int attempt = 1; attempt <= GEMINI_MAX_RETRIES; attempt++) {
+                log.info("[Gemini parse] attempt {}/{}, model: {}", attempt, GEMINI_MAX_RETRIES, model);
+                HttpRequest request = HttpRequest.newBuilder()
+                        .uri(URI.create(url))
+                        .header("Content-Type", "application/json")
+                        .POST(HttpRequest.BodyPublishers.ofString(payloadStr, StandardCharsets.UTF_8))
+                        .build();
+                response = httpClient.send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+                log.info("[Gemini parse] response status: {}, body prefix: {}",
+                        response.statusCode(),
+                        response.body().length() > 400 ? response.body().substring(0, 400) : response.body());
+
+                if (response.statusCode() == 429 && attempt < GEMINI_MAX_RETRIES) {
+                    long waitMs = extractRetryAfterMs(response.body());
+                    waitMs = Math.min(waitMs, GEMINI_MAX_WAIT_MS);
+                    log.warn("[Gemini parse] 429 quota exceeded, waiting {}ms before retry (attempt {}/{})",
+                            waitMs, attempt, GEMINI_MAX_RETRIES);
+                    Thread.sleep(waitMs);
+                    continue;
+                }
+                break;
+            }
+
             ensureSuccess(response, "Gemini parse");
 
             JsonNode root = objectMapper.readTree(response.body());
@@ -266,6 +282,22 @@ public class ProviderVoiceIntentParserService implements VoiceIntentParserServic
 
         throw new IllegalStateException(
                 providerName + " вернул ошибку " + response.statusCode() + ": " + response.body());
+    }
+
+    /** Извлекает задержку retry из тела 429-ответа Gemini ("retry in X.Xs") или возвращает 35 секунд по умолчанию */
+    private long extractRetryAfterMs(String body) {
+        if (body == null || body.isBlank()) return 35_000L;
+        java.util.regex.Matcher m = java.util.regex.Pattern
+                .compile("retry in ([0-9]+(?:\\.[0-9]+)?)s", java.util.regex.Pattern.CASE_INSENSITIVE)
+                .matcher(body);
+        if (m.find()) {
+            try {
+                double seconds = Double.parseDouble(m.group(1));
+                return (long) (seconds * 1000) + 1000L; // +1s запас
+            } catch (NumberFormatException ignored) {
+            }
+        }
+        return 35_000L;
     }
 
     private String trimTrailingSlash(String url) {

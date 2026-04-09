@@ -8,11 +8,14 @@ import com.example.demo.services.TelegramLinkService;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
+
+import jakarta.servlet.http.HttpServletRequest;
 
 import java.util.Map;
 
@@ -26,6 +29,9 @@ public class TelegramController {
     private final UserRepository userRepository;
     private final TelegramLinkService telegramLinkService;
     private final TelegramBotClient telegramBotClient;
+
+    @Value("${telegram.webhook.secret-token:}")
+    private String webhookSecretToken;
 
     /** Статус привязки Telegram для текущего пользователя */
     @GetMapping("/status")
@@ -73,10 +79,30 @@ public class TelegramController {
     /**
      * Webhook endpoint для входящих обновлений от Telegram.
      * Публичный — исключён из фильтра JWT в SecurityConfig.
+     * ЗАЩИЩЁН: проверяет X-Telegram-Bot-Api-Secret-Token для защиты от
+     * несанкционированных запросов.
      * ВСЕГДА возвращает HTTP 200, чтобы Telegram не повторял запросы.
      */
     @PostMapping("/webhook")
-    public ResponseEntity<Map<String, Object>> webhook(@RequestBody Map<String, Object> update) {
+    public ResponseEntity<Map<String, Object>> webhook(
+            @RequestHeader(value = "X-Telegram-Bot-Api-Secret-Token", required = false) String receivedToken,
+            @RequestBody Map<String, Object> update,
+            HttpServletRequest request) {
+
+        // Проверка секретного токена (защита от поддельных webhook запросов)
+        if (webhookSecretToken != null && !webhookSecretToken.isEmpty()) {
+            if (receivedToken == null || !receivedToken.equals(webhookSecretToken)) {
+                log.warn("[SECURITY] Получен webhook без валидного секретного токена от IP: {}",
+                        request.getRemoteAddr());
+                // Возвращаем 200 OK, чтобы не выдавать информацию атакующему
+                // но не обрабатываем запрос
+                return ResponseEntity.ok(Map.of("ok", false, "error", "Unauthorized"));
+            }
+        } else {
+            log.warn("[SECURITY] Telegram webhook работает БЕЗ проверки secret token! " +
+                    "Установите telegram.webhook.secret-token в application.properties");
+        }
+
         try {
             processUpdate(update);
         } catch (Exception e) {

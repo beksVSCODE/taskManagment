@@ -90,12 +90,6 @@ export default function Login() {
                 </>
               )}
             </Button>
-            <p className="text-center text-sm text-muted-foreground">
-              Нет аккаунта?{' '}
-              <Link to="/register" className="text-primary hover:underline font-medium">
-                Зарегистрироваться
-              </Link>
-            </p>
           </form>
         </CardContent>
       </Card>

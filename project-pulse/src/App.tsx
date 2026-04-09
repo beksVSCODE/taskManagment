@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { Layout } from "@/components/Layout";
+import { RoleGuard } from "@/components/RoleGuard";
 import { SplashScreen } from "@/components/SplashScreen";
 import Dashboard from "./pages/Dashboard";
 import Index from "./pages/Index";
@@ -28,6 +29,12 @@ const queryClient = new QueryClient({
     queries: {
       retry: 1,
       staleTime: 30_000,
+      // Глобальная обработка ошибок
+      throwOnError: false,
+    },
+    mutations: {
+      // Глобальная обработка ошибок mutations
+      throwOnError: false,
     },
   },
 });
@@ -69,7 +76,6 @@ const App = () => {
           <BrowserRouter>
             <Routes>
             <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
             <Route
               element={
                 <ProtectedRoute>
@@ -85,9 +91,22 @@ const App = () => {
               <Route path="/team"          element={<Team />} />
               <Route path="/employees"     element={<EmployeesPage />} />
               <Route path="/employees/:id" element={<EmployeeDetailsPage />} />
-              <Route path="/departments"   element={<Departments />} />
+              
+              {/* ADMIN-only routes */}
+              <Route path="/users" element={
+                <RoleGuard allowedRoles={['ADMIN']}>
+                  <UsersManagement />
+                </RoleGuard>
+              } />
+              
+              {/* ADMIN and MANAGER routes */}
+              <Route path="/departments" element={
+                <RoleGuard allowedRoles={['ADMIN', 'MANAGER']}>
+                  <Departments />
+                </RoleGuard>
+              } />
+              
               <Route path="/settings"      element={<Settings />} />
-              <Route path="/users"         element={<UsersManagement />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
