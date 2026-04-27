@@ -297,8 +297,9 @@ export function useUpdateProject() {
     return useMutation({
         mutationFn: ({ id, updates }: { id: string; updates: Partial<Project> }) =>
             projectService.update(id, updates),
-        onSuccess: () => {
+        onSuccess: (_data, variables) => {
             qc.invalidateQueries({ queryKey: ['projects'] });
+            qc.invalidateQueries({ queryKey: ['project', variables.id] });
         },
     });
 }
@@ -338,6 +339,36 @@ export function useDeleteSubtask() {
         onSuccess: (_data, { taskId, projectId }) => {
             qc.invalidateQueries({ queryKey: ['subtasks', taskId] });
             qc.invalidateQueries({ queryKey: ['tasks', projectId] });
+            qc.invalidateQueries({ queryKey: ['tasks', 'all'] });
+        },
+    });
+}
+
+export function useAddProjectMember() {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: ({ projectId, userId }: { projectId: string; userId: string }) =>
+            projectService.addMember(projectId, userId),
+        onSuccess: (_data, { projectId }) => {
+            qc.invalidateQueries({ queryKey: ['project', projectId] });
+            qc.invalidateQueries({ queryKey: ['projects'] });
+        },
+    });
+}
+
+export function useRemoveProjectMember() {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: ({ projectId, userId }: { projectId: string; userId: string }) =>
+            projectService.removeMember(projectId, userId),
+        onSuccess: (_data, { projectId }) => {
+            // Инвалидируем кеш проекта
+            qc.invalidateQueries({ queryKey: ['project', projectId] });
+            // Инвалидируем кеш задач этого проекта (так как там могут измениться исполнители)
+            qc.invalidateQueries({ queryKey: ['tasks', projectId] });
+            // Инвалидируем общий список проектов
+            qc.invalidateQueries({ queryKey: ['projects'] });
+            // Инвалидируем все задачи (на случай если есть в других местах)
             qc.invalidateQueries({ queryKey: ['tasks', 'all'] });
         },
     });

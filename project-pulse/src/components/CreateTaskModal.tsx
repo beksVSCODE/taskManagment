@@ -29,12 +29,11 @@ export function CreateTaskModal({ open, onClose, project }: Props) {
   const [priority, setPriority] = useState<Priority>('MEDIUM');
   const [assigneeIds, setAssigneeIds] = useState<string[]>([]);
   const [dueDate, setDueDate] = useState<Date>();
-  const [startDate, setStartDate] = useState<Date>();
   const [tags, setTags] = useState<string[]>([]);
   const [newTag, setNewTag] = useState('');
-  const [subtasks, setSubtasks] = useState<Array<{ title: string; assigneeId: string; dueDate: string }>>([]);
-  const [newSubtask, setNewSubtask] = useState({ title: '', assigneeId: '', dueDate: '' });
-  const [subtaskErrors, setSubtaskErrors] = useState<{ title?: string; assigneeId?: string; dueDate?: string }>({});
+  const [subtasks, setSubtasks] = useState<Array<{ title: string; assigneeIds: string[]; dueDate: string }>>([]);
+  const [newSubtask, setNewSubtask] = useState({ title: '', assigneeIds: [] as string[], dueDate: '' });
+  const [subtaskErrors, setSubtaskErrors] = useState<{ title?: string; assigneeIds?: string; dueDate?: string }>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const { currentUser } = useAuth();
@@ -44,8 +43,12 @@ export function CreateTaskModal({ open, onClose, project }: Props) {
   const { toast } = useToast();
 
   const teamMembers = users.filter(u =>
-    u.department === project.department || u.id === project.pmId
+    project.teamMemberIds?.includes(u.id) ?? false
   );
+
+  const checkAssigneesMismatch = (taskAssignees: string[], subtaskAssignees: string[]): boolean => {
+    return subtaskAssignees.some(id => !taskAssignees.includes(id));
+  };
 
   const validate = () => {
     const errs: Record<string, string> = {};
@@ -59,14 +62,27 @@ export function CreateTaskModal({ open, onClose, project }: Props) {
 
   const resetForm = () => {
     setTitle(''); setDescription(''); setPriority('MEDIUM');
-    setAssigneeIds([]); setDueDate(undefined); setStartDate(undefined);
+    setAssigneeIds([]); setDueDate(undefined);
     setTags([]); setSubtasks([]); setErrors({}); setNewTag('');
-    setNewSubtask({ title: '', assigneeId: '', dueDate: '' });
+    setNewSubtask({ title: '', assigneeIds: [], dueDate: '' });
     setSubtaskErrors({});
   };
 
   const handleSubmit = () => {
     if (!validate()) return;
+    
+    // Проверяем все подзадачи на совпадение исполнителей
+    const subtasksWithMismatch = subtasks.filter(st => checkAssigneesMismatch(assigneeIds, st.assigneeIds));
+    
+    if (subtasksWithMismatch.length > 0) {
+      const mismatchList = subtasksWithMismatch.map(st => `"${st.title}"`).join(', ');
+      toast({
+        title: '❌ Ошибка: Исполнители не совпадают',
+        description: `Подзадачи ${mismatchList} имеют исполнителей, отличающихся от основной задачи. Исправьте перед сохранением.`,
+        variant: 'destructive',
+      });
+      return;
+    }
     
     const taskData = {
       projectId: project.id,
@@ -77,7 +93,6 @@ export function CreateTaskModal({ open, onClose, project }: Props) {
       creatorId: currentUser?.id ?? '',
       assigneeIds,
       watcherIds: [currentUser?.id ?? ''],
-      startDate: startDate?.toISOString().split('T')[0],
       dueDate: dueDate!.toISOString().split('T')[0],
       completedAt: undefined,
       tags,
@@ -89,6 +104,9 @@ export function CreateTaskModal({ open, onClose, project }: Props) {
     createTask.mutate(taskData, {
       onSuccess: async (createdTask) => {
         // Создаём подзадачи после создания основной задачи
+        let successCount = 0;
+        let failCount = 0;
+        
         if (subtasks.length > 0) {
           for (const st of subtasks) {
             try {
@@ -99,26 +117,48 @@ export function CreateTaskModal({ open, onClose, project }: Props) {
                     projectId: createdTask.projectId,
                     subtaskData: {
                       title: st.title,
-                      assigneeId: st.assigneeId,
+                      assigneeIds: st.assigneeIds,
                       status: 'NEW' as const,
                       dueDate: st.dueDate,
                     },
                   },
                   {
-                    onSuccess: () => resolve(),
-                    onError: (err) => reject(err),
+                    onSuccess: () => {
+                      successCount++;
+                      resolve();
+                    },
+                    onError: (err) => {
+                      failCount++;
+                      reject(err);
+                    },
                   }
                 );
               });
             } catch (err) {
               toast({
-                title: 'Не удалось создать подзадачу',
-                description: `Подзадача "${st.title}" не была создана`,
+                title: 'Ошибка подзадачи',
+                description: `"${st.title}": ${err instanceof Error ? err.message : 'Неизвестная ошибка'}`,
                 variant: 'destructive',
               });
             }
           }
+          
+          // Показываем итоговый результат
+          if (failCount > 0) {
+            toast({
+              title: 'Задача создана с ошибками подзадач',
+              description: `Успешно: ${successCount}/${subtasks.length}, Ошибок: ${failCount}`,
+              variant: 'destructive',
+            });
+          } else if (successCount > 0) {
+            toast({
+              title: 'Задача создана со всеми подзадачами',
+              description: `Подзадач создано: ${successCount}`,
+              variant: 'default',
+            });
+          }
         }
+        
         resetForm();
         onClose();
       },
@@ -144,9 +184,9 @@ export function CreateTaskModal({ open, onClose, project }: Props) {
   };
 
   const handleAddSubtask = () => {
-    const errors: { title?: string; assigneeId?: string; dueDate?: string } = {};
+    const errors: { title?: string; assigneeIds?: string; dueDate?: string } = {};
     if (!newSubtask.title.trim()) errors.title = 'Название обязательно';
-    if (!newSubtask.assigneeId) errors.assigneeId = 'Выберите исполнителя';
+    if (newSubtask.assigneeIds.length === 0) errors.assigneeIds = 'Выберите хотя бы одного исполнителя';
     if (!newSubtask.dueDate) {
       errors.dueDate = 'Укажите срок';
     } else if (new Date(newSubtask.dueDate) < new Date(new Date().toDateString())) {
@@ -155,12 +195,22 @@ export function CreateTaskModal({ open, onClose, project }: Props) {
     setSubtaskErrors(errors);
     if (Object.keys(errors).length > 0) return;
 
+    // Проверка совпадения исполнителей
+    if (checkAssigneesMismatch(assigneeIds, newSubtask.assigneeIds)) {
+      toast({
+        title: '❌ Ошибка: Исполнители не совпадают',
+        description: `Исполнители подзадачи должны быть в списке исполнителей основной задачи`,
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setSubtasks(prev => [...prev, { 
       title: newSubtask.title.trim(), 
-      assigneeId: newSubtask.assigneeId,
+      assigneeIds: newSubtask.assigneeIds,
       dueDate: newSubtask.dueDate 
     }]);
-    setNewSubtask({ title: '', assigneeId: '', dueDate: '' });
+    setNewSubtask({ title: '', assigneeIds: [], dueDate: '' });
     setSubtaskErrors({});
   };
 
@@ -248,42 +298,26 @@ export function CreateTaskModal({ open, onClose, project }: Props) {
           </div>
 
           {/* Dates */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Дата начала</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" className={cn("w-full justify-start mt-1.5 rounded-lg h-9 text-sm", !startDate && "text-muted-foreground")}>
-                    <CalendarIcon className="mr-2 h-3.5 w-3.5" />
-                    {startDate ? format(startDate, 'dd.MM.yyyy') : 'Выберите дату'}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0 rounded-xl" align="start">
-                  <Calendar mode="single" selected={startDate} onSelect={setStartDate} className="p-3 pointer-events-auto" />
-                </PopoverContent>
-              </Popover>
-            </div>
-            <div>
-              <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Срок выполнения *</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" className={cn("w-full justify-start mt-1.5 rounded-lg h-9 text-sm", !dueDate && "text-muted-foreground")}>
-                    <CalendarIcon className="mr-2 h-3.5 w-3.5" />
-                    {dueDate ? format(dueDate, 'dd.MM.yyyy') : 'Выберите дату'}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0 rounded-xl" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={dueDate}
-                    onSelect={setDueDate}
-                    disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
-                    className="p-3 pointer-events-auto"
-                  />
-                </PopoverContent>
-              </Popover>
-              {errors.dueDate && <p className="text-xs text-destructive mt-1">{errors.dueDate}</p>}
-            </div>
+          <div>
+            <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Срок выполнения *</Label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className={cn("w-full justify-start mt-1.5 rounded-lg h-9 text-sm", !dueDate && "text-muted-foreground")}>
+                  <CalendarIcon className="mr-2 h-3.5 w-3.5" />
+                  {dueDate ? format(dueDate, 'dd.MM.yyyy') : 'Выберите дату'}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0 rounded-xl" align="start">
+                <Calendar
+                  mode="single"
+                  selected={dueDate}
+                  onSelect={setDueDate}
+                  disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
+                  className="p-3 pointer-events-auto"
+                />
+              </PopoverContent>
+            </Popover>
+            {errors.dueDate && <p className="text-xs text-destructive mt-1">{errors.dueDate}</p>}
           </div>
 
           {/* Tags */}
@@ -326,17 +360,20 @@ export function CreateTaskModal({ open, onClose, project }: Props) {
             <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Подзадачи</Label>
             <div className="space-y-1.5 mt-1.5">
               {subtasks.map((st, i) => {
-                const assignee = users.find(u => u.id === st.assigneeId);
+                const assignees = users.filter(u => st.assigneeIds.includes(u.id));
                 return (
                   <div key={i} className="flex items-center gap-2 bg-muted/40 px-3 py-2 rounded-lg">
                     <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/40 flex-shrink-0" />
                     <span className="text-sm flex-1">{st.title}</span>
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      {assignee && (
+                      {assignees.length > 0 && (
                         <div className="flex items-center gap-1">
-                          <div className="w-4 h-4 rounded-full bg-primary/10 flex items-center justify-center text-[8px] font-medium text-primary">
-                            {assignee.name.split(' ').map(n => n[0]).join('')}
-                          </div>
+                          {assignees.slice(0, 2).map((assignee) => (
+                            <div key={assignee.id} className="w-4 h-4 rounded-full bg-primary/10 flex items-center justify-center text-[8px] font-medium text-primary" title={assignee.name}>
+                              {assignee.name.split(' ').map(n => n[0]).join('')}
+                            </div>
+                          ))}
+                          {assignees.length > 2 && <span>+{assignees.length - 2}</span>}
                         </div>
                       )}
                       <span>{format(new Date(st.dueDate), 'dd.MM')}</span>
@@ -361,39 +398,50 @@ export function CreateTaskModal({ open, onClose, project }: Props) {
               />
               {subtaskErrors.title && <p className="text-xs text-destructive">{subtaskErrors.title}</p>}
               
-              <div className="flex gap-2">
-                <Select
-                  value={newSubtask.assigneeId}
-                  onValueChange={v => {
-                    setNewSubtask(s => ({ ...s, assigneeId: v }));
-                    if (subtaskErrors.assigneeId) setSubtaskErrors(s => ({ ...s, assigneeId: undefined }));
-                  }}
-                >
-                  <SelectTrigger className="flex-1 rounded-lg text-sm h-9">
-                    <SelectValue placeholder="Исполнитель" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {teamMembers.map(u => (
-                      <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Input
-                  type="date"
-                  className="flex-1 rounded-lg text-sm h-9"
-                  value={newSubtask.dueDate}
-                  onChange={e => {
-                    setNewSubtask(s => ({ ...s, dueDate: e.target.value }));
-                    if (subtaskErrors.dueDate) setSubtaskErrors(s => ({ ...s, dueDate: undefined }));
-                  }}
-                />
-              </div>
-              {(subtaskErrors.assigneeId || subtaskErrors.dueDate) && (
-                <div className="space-y-1">
-                  {subtaskErrors.assigneeId && <p className="text-xs text-destructive">{subtaskErrors.assigneeId}</p>}
-                  {subtaskErrors.dueDate && <p className="text-xs text-destructive">{subtaskErrors.dueDate}</p>}
+              {/* Выбор исполнителей подзадачи */}
+              <div>
+                <Label className="text-xs font-semibold text-muted-foreground mb-1.5 block">Исполнители подзадачи *</Label>
+                <div className="flex flex-wrap gap-1.5 p-2 border border-border rounded-lg bg-muted/20 max-h-24 overflow-y-auto">
+                  {teamMembers.map((user) => (
+                    <div
+                      key={user.id}
+                      className={cn(
+                        "flex items-center gap-2 px-2 py-1 rounded text-xs cursor-pointer transition-all",
+                        newSubtask.assigneeIds.includes(user.id)
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-card border border-border hover:border-primary/40"
+                      )}
+                      onClick={() => {
+                        setNewSubtask(s => ({
+                          ...s,
+                          assigneeIds: s.assigneeIds.includes(user.id)
+                            ? s.assigneeIds.filter(id => id !== user.id)
+                            : [...s.assigneeIds, user.id]
+                        }));
+                        if (subtaskErrors.assigneeIds) setSubtaskErrors(s => ({ ...s, assigneeIds: undefined }));
+                      }}
+                    >
+                      <div className={cn(
+                        "w-3 h-3 rounded border",
+                        newSubtask.assigneeIds.includes(user.id) ? "bg-white border-white" : "border-muted-foreground/30"
+                      )} />
+                      <span>{user.name}</span>
+                    </div>
+                  ))}
                 </div>
-              )}
+                {subtaskErrors.assigneeIds && <p className="text-xs text-destructive mt-1">{subtaskErrors.assigneeIds}</p>}
+              </div>
+              
+              <Input
+                type="date"
+                className="rounded-lg text-sm"
+                value={newSubtask.dueDate}
+                onChange={e => {
+                  setNewSubtask(s => ({ ...s, dueDate: e.target.value }));
+                  if (subtaskErrors.dueDate) setSubtaskErrors(s => ({ ...s, dueDate: undefined }));
+                }}
+              />
+              {subtaskErrors.dueDate && <p className="text-xs text-destructive">{subtaskErrors.dueDate}</p>}
               
               <Button 
                 variant="outline" 

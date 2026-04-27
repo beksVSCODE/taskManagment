@@ -25,9 +25,11 @@ public class ProjectService {
     private final UserRepository userRepository;
     private final DepartmentRepository departmentRepository;
     private final TaskRepository taskRepository;
+    private final TaskAssigneeRepository taskAssigneeRepository;
     private final NotificationRepository notificationRepository;
     private final TaskHistoryRepository taskHistoryRepository;
     private final AttachmentRepository attachmentRepository;
+    private final ProjectMemberRepository projectMemberRepository;
 
     public Project create(ProjectRequest request, String email) {
         User currentUser = userRepository.findByEmail(email)
@@ -77,7 +79,16 @@ public class ProjectService {
                 .deadline(request.getDeadline())
                 .build();
 
-        return projectRepository.save(project);
+        project = projectRepository.save(project);
+
+        // Добавляем членов проекта
+        if (request.getMemberIds() != null && !request.getMemberIds().isEmpty()) {
+            for (Long memberId : request.getMemberIds()) {
+                addMember(project.getId(), memberId);
+            }
+        }
+
+        return project;
     }
 
     public List<Project> getAll(String email) {
@@ -167,9 +178,9 @@ public class ProjectService {
             project.setDescription(request.getDescription());
         }
 
-        // deadline: null означает «очистить», поэтому обновляем всегда если поле
-        // присутствует в запросе
-        if (request.getDeadline() != null || (request.getName() != null)) {
+        // deadline может быть null (очистка), поэтому проверяем через hasDeadline()
+        // или просто обновляем если deadline был отправлен (это определяет фронт)
+        if (request.getDeadline() != null) {
             project.setDeadline(request.getDeadline());
         }
 
@@ -212,6 +223,51 @@ public class ProjectService {
         }
 
         return projectRepository.save(project);
+    }
+
+    public void addMember(Long projectId, Long userId) {
+        Project project = projectRepository.findById(projectId)
+                .orElseThrow(() -> new ResourceNotFoundException("Проект не найден"));
+        
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Пользователь не найден"));
+
+        // Проверяем, что пользователь уже не в проекте
+        projectMemberRepository.findByProjectIdAndUserId(projectId, userId)
+                .ifPresentOrElse(
+                        member -> {
+                            throw new IllegalArgumentException("Пользователь уже в проекте");
+                        },
+                        () -> {
+                            ProjectMember member = ProjectMember.builder()
+                                    .project(project)
+                                    .user(user)
+                                    .build();
+                            projectMemberRepository.save(member);
+                        }
+                );
+    }
+
+    public void removeMember(Long projectId, Long userId) {
+        // Проверяем, что участник существует в проекте
+        ProjectMember member = projectMemberRepository.findByProjectIdAndUserId(projectId, userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Участник не найден в проекте"));
+
+        // Шаг 1: Находим все задачи этого проекта
+        List<Task> projectTasks = taskRepository.findByProjectId(projectId);
+
+        // Шаг 2: Удаляем пользователя из исполнителей всех задач проекта
+        for (Task task : projectTasks) {
+            List<TaskAssignee> assignees = taskAssigneeRepository.findByTaskId(task.getId());
+            for (TaskAssignee assignee : assignees) {
+                if (assignee.getUser().getId().equals(userId)) {
+                    taskAssigneeRepository.delete(assignee);
+                }
+            }
+        }
+
+        // Шаг 3: Удаляем участника из проекта
+        projectMemberRepository.delete(member);
     }
 
     public void delete(Long id) {

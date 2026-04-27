@@ -43,7 +43,7 @@ public class ProjectController {
     }
 
     @PatchMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','PM')")
     public ResponseEntity<ProjectResponse> update(@PathVariable Long id, @RequestBody ProjectRequest request,
             @AuthenticationPrincipal UserDetails userDetails) {
         return ResponseEntity.ok(projectService.updateAsResponse(id, request, userDetails.getUsername()));
@@ -53,6 +53,20 @@ public class ProjectController {
     @PreAuthorize("hasAnyRole('ADMIN','MANAGER','PM')")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         projectService.delete(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/{id}/members/{userId}")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','PM')")
+    public ResponseEntity<Void> addMember(@PathVariable Long id, @PathVariable Long userId) {
+        projectService.addMember(id, userId);
+        return ResponseEntity.ok().build();
+    }
+
+    @DeleteMapping("/{id}/members/{userId}")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','PM')")
+    public ResponseEntity<Void> removeMember(@PathVariable Long id, @PathVariable Long userId) {
+        projectService.removeMember(id, userId);
         return ResponseEntity.noContent().build();
     }
 }

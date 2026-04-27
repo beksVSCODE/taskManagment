@@ -123,6 +123,23 @@ export function usePermissions() {
         // 13. Attach Files to Comment: all roles
         canAttachToComment: true,
 
+        // ── Projects - Member Management ──────────────────────
+        // Manage Project Members (add/remove): ADMIN, MANAGER, PM only
+        canManageProjectMembers: (_project?: Project) => {
+            if (roleName === 'ADMIN') return true;
+            if (roleName === 'MANAGER') return true;
+            if (roleName === 'PM' && _project?.pmId === uid) return true;
+            return false;
+        },
+
+        // Edit Project Deadline: ADMIN, MANAGER, PM only
+        canEditProjectDeadline: (project?: Project) => {
+            if (roleName === 'ADMIN') return true;
+            if (roleName === 'MANAGER') return true;
+            if (roleName === 'PM' && project?.pmId === uid) return true;
+            return false;
+        },
+
         // ── Navigation ────────────────────────────────────────
         // 14. View Analytics: ADMIN, MANAGER only
         canViewAnalytics: roleName === 'ADMIN' || roleName === 'MANAGER',

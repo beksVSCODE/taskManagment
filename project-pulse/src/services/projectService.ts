@@ -62,5 +62,13 @@ export const projectService = {
     delete: async (id: string): Promise<void> => {
         await api.delete(`/projects/${id}`);
     },
+
+    addMember: async (projectId: string, userId: string): Promise<void> => {
+        await api.post(`/projects/${projectId}/members/${userId}`, {});
+    },
+
+    removeMember: async (projectId: string, userId: string): Promise<void> => {
+        await api.delete(`/projects/${projectId}/members/${userId}`);
+    },
 };
 

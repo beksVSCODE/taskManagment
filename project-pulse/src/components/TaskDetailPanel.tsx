@@ -13,9 +13,10 @@ import { Task, User, TaskStatus, Project } from '@/types';
 import { useUpdateTask, useDeleteTask, useAddComment, useUsers, useAddSubtask, useUpdateSubtask, useDeleteSubtask, useComments, useSubtasks } from '@/hooks/useData';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useAuth } from '@/contexts/AuthContext';
+import { EditTaskModal } from './EditTaskModal';
 import { format, formatDistanceToNow } from 'date-fns';
 import { ru } from 'date-fns/locale';
-import { Trash2, MessageSquare, Clock, History, CheckSquare, AlertCircle, Send, Plus, X } from 'lucide-react';
+import { Trash2, MessageSquare, Clock, History, CheckSquare, AlertCircle, Send, Plus, X, Edit } from 'lucide-react';
 
 interface Props {
   task: Task | null;
@@ -34,6 +35,7 @@ export function TaskDetailPanel({ task, project, open, onClose }: Props) {
   const [showMentions, setShowMentions] = useState(false);
   const [mentionFilter, setMentionFilter] = useState('');
   const [showAddSubtask, setShowAddSubtask] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
   const [subtaskErrors, setSubtaskErrors] = useState<{ title?: string; assigneeId?: string; dueDate?: string }>({});
   const [newSubtask, setNewSubtask] = useState<{ title: string; assigneeId: string; dueDate: string }>({
     title: '', assigneeId: '', dueDate: '',
@@ -210,7 +212,8 @@ export function TaskDetailPanel({ task, project, open, onClose }: Props) {
   );
 
   return (
-    <Sheet open={open} onOpenChange={() => onClose()}>
+    <>
+      <Sheet open={open} onOpenChange={() => onClose()}>
       <SheetContent className="w-full sm:max-w-[600px] p-0 flex flex-col">
         <SheetHeader className="p-4 sm:p-6 pb-0">
           <div className="flex items-start justify-between">
@@ -251,9 +254,16 @@ export function TaskDetailPanel({ task, project, open, onClose }: Props) {
               </div>
             </div>
             {canDelete && (
-              <Button variant="ghost" size="icon" onClick={handleDelete} className="text-destructive hover:text-destructive">
-                <Trash2 className="w-4 h-4" />
-              </Button>
+              <div className="flex gap-1">
+                {canEdit && (
+                  <Button variant="ghost" size="icon" onClick={() => setShowEditModal(true)} className="text-primary hover:text-primary">
+                    <Edit className="w-4 h-4" />
+                  </Button>
+                )}
+                <Button variant="ghost" size="icon" onClick={handleDelete} className="text-destructive hover:text-destructive">
+                  <Trash2 className="w-4 h-4" />
+                </Button>
+              </div>
             )}
           </div>
         </SheetHeader>
@@ -566,5 +576,13 @@ export function TaskDetailPanel({ task, project, open, onClose }: Props) {
         </ScrollArea>
       </SheetContent>
     </Sheet>
+
+    <EditTaskModal 
+      open={showEditModal} 
+      onClose={() => setShowEditModal(false)} 
+      task={task} 
+      project={project}
+    />
+  </>
   );
 }

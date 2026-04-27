@@ -66,4 +66,44 @@ public class SubtaskController {
         subtaskService.delete(subtaskId, userDetails.getUsername());
         return ResponseEntity.noContent().build();
     }
+
+    // ─────────────────────────────────────────────────────────────────
+    // Новые endpoints для управления исполнителями подзадачи
+    // ─────────────────────────────────────────────────────────────────
+
+    @PostMapping("/api/subtasks/{subtaskId}/assignees/{userId}")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','PM')")
+    public ResponseEntity<SubtaskResponse> addAssignee(
+            @PathVariable Long subtaskId,
+            @PathVariable Long userId,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        return ResponseEntity.ok(subtaskService.addAssignee(subtaskId, userId, userDetails.getUsername()));
+    }
+
+    @DeleteMapping("/api/subtasks/{subtaskId}/assignees/{userId}")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','PM')")
+    public ResponseEntity<SubtaskResponse> removeAssignee(
+            @PathVariable Long subtaskId,
+            @PathVariable Long userId,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        return ResponseEntity.ok(subtaskService.removeAssignee(subtaskId, userId, userDetails.getUsername()));
+    }
+
+    @PatchMapping("/api/subtasks/{subtaskId}/assignees/{userId}/complete")
+    @PreAuthorize("hasAnyRole('ADMIN','PM','TEAM')")
+    public ResponseEntity<SubtaskResponse> markAsCompleted(
+            @PathVariable Long subtaskId,
+            @PathVariable Long userId,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        return ResponseEntity.ok(subtaskService.markAsCompleted(subtaskId, userId, userDetails.getUsername()));
+    }
+
+    @PatchMapping("/api/subtasks/{subtaskId}/assignees/{userId}/incomplete")
+    @PreAuthorize("hasAnyRole('ADMIN','PM','TEAM')")
+    public ResponseEntity<SubtaskResponse> markAsIncomplete(
+            @PathVariable Long subtaskId,
+            @PathVariable Long userId,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        return ResponseEntity.ok(subtaskService.markAsIncomplete(subtaskId, userId, userDetails.getUsername()));
+    }
 }

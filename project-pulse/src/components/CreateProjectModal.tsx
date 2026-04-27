@@ -19,6 +19,7 @@ export function CreateProjectModal({ open, onClose }: Props) {
   const [pmId, setPmId]               = useState('');
   const [deptId, setDeptId]           = useState('');
   const [deadline, setDeadline]       = useState('');
+  const [memberIds, setMemberIds]     = useState<string[]>([]);
   const [errors, setErrors]           = useState<Record<string, string>>({});
 
   const { currentUser }            = useAuth();
@@ -59,7 +60,7 @@ export function CreateProjectModal({ open, onClose }: Props) {
   };
 
   const reset = () => {
-    setName(''); setDescription(''); setPmId(''); setDeptId(''); setDeadline(''); setErrors({});
+    setName(''); setDescription(''); setPmId(''); setDeptId(''); setDeadline(''); setMemberIds([]); setErrors({});
   };
 
   // Сбрасываем PM при смене отдела
@@ -78,7 +79,7 @@ export function CreateProjectModal({ open, onClose }: Props) {
         departmentId: deptId ? Number(deptId) : undefined,
         // PM назначает себя сам (backend игнорирует pmId для роли PM)
         pmId: isPm ? (currentUser?.id ?? '') : pmId,
-        teamMemberIds: [],
+        teamMemberIds: memberIds,
         deadline: deadline || undefined,
       },
       {
@@ -198,6 +199,40 @@ export function CreateProjectModal({ open, onClose }: Props) {
               onChange={e => setDeadline(e.target.value)}
               className="w-full"
             />
+          </div>
+
+          {/* Члены команды */}
+          <div className="space-y-2">
+            <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Члены команды</Label>
+            <div className="flex flex-wrap gap-2 p-3 border border-border rounded-lg bg-muted/20 max-h-48 overflow-y-auto">
+              {users
+                .filter(u => u.role === 'TEAM' || u.role === 'PM')
+                .map((user) => (
+                  <div
+                    key={user.id}
+                    className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm cursor-pointer transition-all ${
+                      memberIds.includes(user.id)
+                        ? 'bg-primary text-primary-foreground shadow-sm'
+                        : 'bg-card border border-border hover:border-primary/40 hover:bg-primary/5'
+                    }`}
+                    onClick={() => {
+                      setMemberIds(prev =>
+                        prev.includes(user.id)
+                          ? prev.filter(id => id !== user.id)
+                          : [...prev, user.id]
+                      );
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={memberIds.includes(user.id)}
+                      onChange={() => {}}
+                      className="w-4 h-4 cursor-pointer"
+                    />
+                    <span className="text-xs font-medium">{user.name}</span>
+                  </div>
+                ))}
+            </div>
           </div>
         </div>
 

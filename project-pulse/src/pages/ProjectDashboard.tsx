@@ -1,18 +1,19 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useParams, Link, useSearchParams, useNavigate } from 'react-router-dom';
-import { useProject, useTasks, useUsers, useUpdateProject, useDeleteProject } from '@/hooks/useData';
+import { useProject, useTasks, useUsers, useUpdateProject, useDeleteProject, useAddProjectMember, useRemoveProjectMember } from '@/hooks/useData';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useToast } from '@/hooks/use-toast';
 import { KanbanBoard } from '@/components/KanbanBoard';
 import { TaskDetailPanel } from '@/components/TaskDetailPanel';
 import { CreateTaskModal } from '@/components/CreateTaskModal';
 import { VoiceTaskModal } from '@/components/VoiceTaskModal';
+import { ProjectMembersModal } from '@/components/ProjectMembersModal';
 import { TaskFilters, FilterState, defaultFilters } from '@/components/TaskFilters';
 import { AnalyticsView } from '@/components/AnalyticsView';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Task, Priority } from '@/types';
-import { ArrowLeft, Kanban, BarChart3, Calendar, Pencil, Check, X, Trash2 } from 'lucide-react';
+import { ArrowLeft, Kanban, BarChart3, Calendar, Pencil, Check, X, Trash2, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 export default function ProjectDashboard() {
@@ -29,6 +30,7 @@ export default function ProjectDashboard() {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [voiceOpen, setVoiceOpen] = useState(false);
+  const [membersModalOpen, setMembersModalOpen] = useState(false);
   const [filters, setFilters] = useState<FilterState>(defaultFilters);
   const [editingDeadline, setEditingDeadline] = useState(false);
   const [deadlineValue, setDeadlineValue] = useState('');
@@ -135,13 +137,15 @@ export default function ProjectDashboard() {
                     Дедлайн не задан
                   </span>
                 )}
-                <button
-                  className="text-muted-foreground/40 hover:text-muted-foreground transition-colors"
-                  onClick={() => { setDeadlineValue(project.deadline ?? ''); setEditingDeadline(true); }}
-                  title="Изменить дедлайн"
-                >
-                  <Pencil className="w-3 h-3" />
-                </button>
+                {permissions.canEditProjectDeadline(project) && (
+                  <button
+                    className="text-muted-foreground/40 hover:text-muted-foreground transition-colors"
+                    onClick={() => { setDeadlineValue(project.deadline ?? ''); setEditingDeadline(true); }}
+                    title="Изменить дедлайн"
+                  >
+                    <Pencil className="w-3 h-3" />
+                  </button>
+                )}
               </>
             ) : (
               <div className="flex items-center gap-1.5">
@@ -160,7 +164,16 @@ export default function ProjectDashboard() {
                   onClick={() => {
                     updateProject.mutate(
                       { id: project.id, updates: { deadline: deadlineValue || undefined } },
-                      { onSuccess: () => setEditingDeadline(false) }
+                      {
+                        onSuccess: () => {
+                          setEditingDeadline(false);
+                          toast({ title: 'Дедлайн обновлен' });
+                        },
+                        onError: (err) => {
+                          const message = err instanceof Error ? err.message : 'Ошибка обновления дедлайна';
+                          toast({ title: 'Не удалось обновить дедлайн', description: message, variant: 'destructive' });
+                        },
+                      }
                     );
                   }}
                 >
@@ -176,6 +189,22 @@ export default function ProjectDashboard() {
                 </Button>
               </div>
             )}
+          </div>
+
+          {/* Члены команды */}
+          <div className="flex items-center gap-2 mt-3">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <Users className="w-3 h-3" />
+              <span>Команда: {project.memberNames?.length ?? 0}</span>
+            </div>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-6 gap-1 text-xs"
+              onClick={() => setMembersModalOpen(true)}
+            >
+              Управлять
+            </Button>
           </div>
         </div>
         {/* Кнопка удаления проекта */}
@@ -226,6 +255,14 @@ export default function ProjectDashboard() {
       <TaskDetailPanel task={currentSelectedTask} project={project} open={!!selectedTask} onClose={closeTask} />
       <CreateTaskModal open={createOpen} onClose={() => setCreateOpen(false)} project={project} />
       <VoiceTaskModal open={voiceOpen} onClose={() => setVoiceOpen(false)} project={project} />
+      <ProjectMembersModal
+        open={membersModalOpen}
+        onClose={() => setMembersModalOpen(false)}
+        projectId={project?.id ?? 0}
+        projectName={project?.name ?? 'Проект'}
+        memberIds={project?.teamMemberIds ?? []}
+        memberNames={project?.memberNames ?? []}
+      />
     </div>
   );
 }

@@ -5,6 +5,7 @@ import com.example.demo.dto.request.SubtaskStatusRequest;
 import com.example.demo.dto.request.SubtaskUpdateRequest;
 import com.example.demo.dto.response.SubtaskResponse;
 import com.example.demo.entity.Subtask;
+import com.example.demo.entity.SubtaskAssignee;
 import com.example.demo.entity.Task;
 import com.example.demo.entity.TaskAssignee;
 import com.example.demo.entity.User;
@@ -12,6 +13,7 @@ import com.example.demo.enums.Role;
 import com.example.demo.enums.TaskStatus;
 import com.example.demo.exception.AccessDeniedException;
 import com.example.demo.exception.ResourceNotFoundException;
+import com.example.demo.repositories.SubtaskAssigneeRepository;
 import com.example.demo.repositories.SubtaskRepository;
 import com.example.demo.repositories.TaskRepository;
 import com.example.demo.repositories.UserRepository;
@@ -21,7 +23,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -31,6 +35,7 @@ public class SubtaskService {
     private final SubtaskRepository subtaskRepository;
     private final TaskRepository taskRepository;
     private final UserRepository userRepository;
+    private final SubtaskAssigneeRepository subtaskAssigneeRepository;
 
     // =========================================================
     // 1. Получение списка подзадач
@@ -47,7 +52,7 @@ public class SubtaskService {
     }
 
     // =========================================================
-    // 2. Создание подзадачи
+    // 2. Создание подзадачи с поддержкой нескольких исполнителей
     // ADMIN - в любой задаче
     // MANAGER - только в задачах своего отдела
     // PM - только в задачах своего проекта
@@ -65,20 +70,45 @@ public class SubtaskService {
         validateCreateRequest(request);
         validateTaskScope(user, task, "CREATE");
 
-        User assignee = userRepository.findById(request.getAssigneeId())
-                .orElseThrow(() -> new ResourceNotFoundException("Исполнитель не найден: " + request.getAssigneeId()));
+        // Получаем список исполнителей (новый формат или старый для совместимости)
+        List<Long> assigneeIds = request.getAssigneeIds();
+        if ((assigneeIds == null || assigneeIds.isEmpty()) && request.getAssigneeId() != null) {
+            assigneeIds = List.of(request.getAssigneeId());
+        }
 
-        validateAssigneeAccess(user, task, assignee);
+        if (assigneeIds == null || assigneeIds.isEmpty()) {
+            throw new IllegalArgumentException("Должен быть хотя бы один исполнитель");
+        }
+
+        // Валидируем всех исполнителей
+        List<User> assignees = new ArrayList<>();
+        for (Long id : assigneeIds) {
+            User assignee = userRepository.findById(id)
+                    .orElseThrow(() -> new ResourceNotFoundException("Исполнитель не найден: " + id));
+            validateAssigneeAccess(user, task, assignee);
+            assignees.add(assignee);
+        }
 
         Subtask subtask = Subtask.builder()
                 .task(task)
                 .title(request.getTitle().trim())
-                .assignee(assignee)
+                .assignee(assignees.get(0)) // Совместимость - первый исполнитель как основной
                 .status(request.getStatus() != null ? request.getStatus() : TaskStatus.NEW)
                 .dueDate(request.getDueDate())
                 .build();
 
         Subtask saved = subtaskRepository.save(subtask);
+
+        // Добавляем всех исполнителей через таблицу-связь
+        for (User assignee : assignees) {
+            SubtaskAssignee sa = SubtaskAssignee.builder()
+                    .subtask(saved)
+                    .assignee(assignee)
+                    .isCompleted(false)
+                    .build();
+            subtaskAssigneeRepository.save(sa);
+        }
+
         recalculateParentTaskStatus(task);
 
         return toResponse(saved);
@@ -309,8 +339,10 @@ public class SubtaskService {
             throw new IllegalArgumentException("Название подзадачи обязательно");
         }
 
-        if (request.getAssigneeId() == null) {
-            throw new IllegalArgumentException("Исполнитель подзадачи обязателен");
+        // Проверяем наличие хотя бы одного исполнителя (поддерживаем оба формата)
+        if ((request.getAssigneeIds() == null || request.getAssigneeIds().isEmpty()) &&
+                request.getAssigneeId() == null) {
+            throw new IllegalArgumentException("Должен быть хотя бы один исполнитель");
         }
 
         if (request.getDueDate() == null) {
@@ -319,6 +351,136 @@ public class SubtaskService {
 
         if (request.getDueDate().isBefore(LocalDate.now())) {
             throw new IllegalArgumentException("Срок подзадачи должен быть >= текущей даты");
+        }
+    }
+
+    // =========================================================
+    // 6. Добавление исполнителя к подзадаче
+    // =========================================================
+    public SubtaskResponse addAssignee(Long subtaskId, Long userId, String email) {
+        User user = getUser(email);
+        Subtask subtask = getSubtask(subtaskId);
+        Task task = subtask.getTask();
+
+        validateTaskScope(user, task, "EDIT");
+
+        User assignee = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Пользователь не найден: " + userId));
+
+        validateAssigneeAccess(user, task, assignee);
+
+        // Проверяем, не назначен ли уже
+        if (subtaskAssigneeRepository.findBySubtaskIdAndAssigneeId(subtask.getId(), userId).isPresent()) {
+            throw new IllegalArgumentException("Этот пользователь уже назначен на подзадачу");
+        }
+
+        SubtaskAssignee sa = SubtaskAssignee.builder()
+                .subtask(subtask)
+                .assignee(assignee)
+                .isCompleted(false)
+                .build();
+
+        subtaskAssigneeRepository.save(sa);
+        return toResponse(subtask);
+    }
+
+    // =========================================================
+    // 7. Удаление исполнителя из подзадачи
+    // =========================================================
+    public SubtaskResponse removeAssignee(Long subtaskId, Long userId, String email) {
+        User user = getUser(email);
+        Subtask subtask = getSubtask(subtaskId);
+        Task task = subtask.getTask();
+
+        validateTaskScope(user, task, "EDIT");
+
+        SubtaskAssignee sa = subtaskAssigneeRepository.findBySubtaskIdAndAssigneeId(subtask.getId(), userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Исполнитель не назначен на подзадачу"));
+
+        // Убедимся, что после удаления останется хотя бы один исполнитель
+        long remainingCount = subtaskAssigneeRepository.findBySubtaskId(subtask.getId()).size();
+        if (remainingCount <= 1) {
+            throw new IllegalArgumentException("Должен остаться хотя бы один исполнитель подзадачи");
+        }
+
+        subtaskAssigneeRepository.delete(sa);
+        return toResponse(subtask);
+    }
+
+    // =========================================================
+    // 8. Отметить выполнение подзадачи для конкретного исполнителя
+    // =========================================================
+    public SubtaskResponse markAsCompleted(Long subtaskId, Long userId, String email) {
+        User user = getUser(email);
+        Subtask subtask = getSubtask(subtaskId);
+        Task task = subtask.getTask();
+
+        // Проверяем, что пользователь назначен на эту подзадачу
+        if (user.getRole() == Role.TEAM) {
+            SubtaskAssignee sa = subtaskAssigneeRepository.findBySubtaskIdAndAssigneeId(subtask.getId(), user.getId())
+                    .orElseThrow(() -> new AccessDeniedException("Вы не назначены на эту подзадачу"));
+            
+            sa.setIsCompleted(true);
+            sa.setCompletedAt(LocalDateTime.now());
+            subtaskAssigneeRepository.save(sa);
+        } else {
+            // ADMIN/PM могут отмечать для других
+            SubtaskAssignee sa = subtaskAssigneeRepository.findBySubtaskIdAndAssigneeId(subtask.getId(), userId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Исполнитель не назначен на подзадачу"));
+            
+            sa.setIsCompleted(true);
+            sa.setCompletedAt(LocalDateTime.now());
+            subtaskAssigneeRepository.save(sa);
+        }
+
+        // Проверяем, выполнили ли ВСЕ исполнители
+        checkIfAllCompletedAndUpdateSubtaskStatus(subtask, task);
+
+        return toResponse(subtask);
+    }
+
+    // =========================================================
+    // 9. Отметить невыполненной для конкретного исполнителя
+    // =========================================================
+    public SubtaskResponse markAsIncomplete(Long subtaskId, Long userId, String email) {
+        User user = getUser(email);
+        Subtask subtask = getSubtask(subtaskId);
+
+        if (user.getRole() == Role.TEAM) {
+            SubtaskAssignee sa = subtaskAssigneeRepository.findBySubtaskIdAndAssigneeId(subtask.getId(), user.getId())
+                    .orElseThrow(() -> new AccessDeniedException("Вы не назначены на эту подзадачу"));
+            
+            sa.setIsCompleted(false);
+            sa.setCompletedAt(null);
+            subtaskAssigneeRepository.save(sa);
+        } else {
+            SubtaskAssignee sa = subtaskAssigneeRepository.findBySubtaskIdAndAssigneeId(subtask.getId(), userId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Исполнитель не назначен на подзадачу"));
+            
+            sa.setIsCompleted(false);
+            sa.setCompletedAt(null);
+            subtaskAssigneeRepository.save(sa);
+        }
+
+        return toResponse(subtask);
+    }
+
+    // =========================================================
+    // 10. Проверка: все ли исполнители выполнили подзадачу?
+    // =========================================================
+    private void checkIfAllCompletedAndUpdateSubtaskStatus(Subtask subtask, Task task) {
+        List<SubtaskAssignee> assignees = subtaskAssigneeRepository.findBySubtaskId(subtask.getId());
+        
+        boolean allCompleted = assignees.stream().allMatch(SubtaskAssignee::getIsCompleted);
+        
+        if (allCompleted && !subtask.getStatus().equals(TaskStatus.DONE)) {
+            subtask.setStatus(TaskStatus.DONE);
+            subtaskRepository.save(subtask);
+            recalculateParentTaskStatus(task);
+        } else if (!allCompleted && subtask.getStatus().equals(TaskStatus.DONE)) {
+            subtask.setStatus(TaskStatus.NEW);
+            subtaskRepository.save(subtask);
+            recalculateParentTaskStatus(task);
         }
     }
 
@@ -350,10 +512,33 @@ public class SubtaskService {
             r.setTaskId(subtask.getTask().getId());
         }
 
+        // Для совместимости - первый исполнитель
         if (subtask.getAssignee() != null) {
             r.setAssigneeId(subtask.getAssignee().getId());
             r.setAssigneeName(subtask.getAssignee().getFullName());
         }
+
+        // Новое: список всех исполнителей
+        List<SubtaskAssignee> subtaskAssignees = subtaskAssigneeRepository.findBySubtaskId(subtask.getId());
+        
+        r.setAssigneeIds(subtaskAssignees.stream()
+                .map(sa -> sa.getAssignee().getId())
+                .collect(Collectors.toList()));
+        
+        r.setAssigneeNames(subtaskAssignees.stream()
+                .map(sa -> sa.getAssignee().getFullName())
+                .collect(Collectors.toList()));
+        
+        r.setAssigneeStatuses(subtaskAssignees.stream()
+                .map(sa -> {
+                    SubtaskResponse.AssigneeStatus status = new SubtaskResponse.AssigneeStatus();
+                    status.setAssigneeId(sa.getAssignee().getId());
+                    status.setAssigneeName(sa.getAssignee().getFullName());
+                    status.setIsCompleted(sa.getIsCompleted());
+                    status.setCompletedAt(sa.getCompletedAt());
+                    return status;
+                })
+                .collect(Collectors.toList()));
 
         return r;
     }

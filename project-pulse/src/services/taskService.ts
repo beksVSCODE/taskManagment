@@ -136,11 +136,22 @@ export const taskService = {
     // ── Подзадачи ─────────────────────────────────────────────────────────────
 
     addSubtask: async (taskId: string, subtaskData: Omit<Subtask, 'id'>, _userId?: string): Promise<void> => {
-        await api.post(`/tasks/${taskId}/subtasks`, {
+        // Поддерживаем как старый формат (assigneeId) так и новый (assigneeIds)
+        const payload: any = {
             title: subtaskData.title,
-            assigneeId: Number(subtaskData.assigneeId),
             dueDate: subtaskData.dueDate,
-        });
+        };
+
+        if (subtaskData.assigneeIds && subtaskData.assigneeIds.length > 0) {
+            // Новый формат: несколько исполнителей
+            payload.assigneeIds = subtaskData.assigneeIds.map(id => Number(id));
+        } else if (subtaskData.assigneeId) {
+            // Старый формат: один исполнитель (для совместимости)
+            payload.assigneeId = Number(subtaskData.assigneeId);
+            payload.assigneeIds = [Number(subtaskData.assigneeId)];
+        }
+
+        await api.post(`/tasks/${taskId}/subtasks`, payload);
     },
 
     updateSubtask: async (_taskId: string, subtaskId: string, updates: Partial<Subtask>, _userId?: string): Promise<void> => {

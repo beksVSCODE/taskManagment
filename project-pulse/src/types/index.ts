@@ -50,10 +50,18 @@ export interface Project {
 export interface Subtask {
     id: string;
     title: string;
-    assigneeId?: string;
-    assigneeName?: string;
+    assigneeId?: string;           // Для совместимости (первый исполнитель)
+    assigneeName?: string;          // Для совместимости
+    assigneeIds?: string[];         // Новое: все исполнители
+    assigneeNames?: string[];       // Новое: имена всех исполнителей
     status: 'NEW' | 'DONE';
     dueDate?: string;
+    assigneeStatuses?: Array<{      // Новое: статус выполнения для каждого исполнителя
+        assigneeId: string;
+        assigneeName: string;
+        isCompleted: boolean;
+        completedAt?: string;
+    }>;
 }
 
 // ─── Вложение (из AttachmentResponse) ───────────────────────────────────────
